@@ -47,6 +47,14 @@ if (BigInt(bal.amount) === 0n) {
 }
 if (!send) { console.log("dry run: add --yes to broadcast"); process.exit(0); }
 
-const res = await client.sendTokens(from, to, [{ denom: config.denom, amount }], "auto", memo);
+// The testnet rejects fees under 10000 umec ("fee must greater than or equal 10000umec", seen 2026-11-10),
+// so simulate gas, then pay max(gas * minGasPrice, minFee).
+const sendMsg = { typeUrl: "/cosmos.bank.v1beta1.MsgSend",
+  value: { fromAddress: from, toAddress: to, amount: [{ denom: config.denom, amount }] } };
+const gas = Math.ceil((await client.simulate(from, [sendMsg], memo)) * 1.5);
+const minFee = BigInt(config.minFeeUmec ?? "10000");
+const byPrice = BigInt(Math.ceil(gas * parseFloat(config.minGasPrice)));
+const fee = { amount: [{ denom: config.denom, amount: String(byPrice > minFee ? byPrice : minFee) }], gas: String(gas) };
+const res = await client.signAndBroadcast(from, [sendMsg], fee, memo);
 console.log(JSON.stringify({ code: res.code, txhash: res.transactionHash, height: res.height,
   rest: `${config.hub.rest}/cosmos/tx/v1beta1/txs/${res.transactionHash}` }, null, 2));

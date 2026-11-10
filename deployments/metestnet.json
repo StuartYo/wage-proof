@@ -1,0 +1,9 @@
+{
+  "network": "metestnet",
+  "chainId": 400,
+  "address": "0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0",
+  "deployTx": "0xfa017bd543ed4fc014f454e2a82bf869e1146af95d6e7b0fdf2b035b043fc407",
+  "block": 5248543,
+  "deployer": "0x2B3f3d7e30D0CD237d78a3A8a8d6fDD3D3a6d3f2",
+  "deployedAt": "2026-11-10T15:45:41.211Z"
+}

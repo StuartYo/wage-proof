@@ -1,0 +1,99 @@
+fund employer 0.05 MEC {"tx":"0xa1bfe6b796ed4fad5f11a9235086d2048f49e6a006a61181dd5d1ce74cd53dec","block":5248549,"status":1}
+submit A (1h window) {"tx":"0x6ceceed0f8c210af7a3bcd0330ba7b0076c4784e1d54c78141b4f32f41665dbf","block":5248551,"status":1}
+confirm #1 {"tx":"0x3ddeb1474cb120bc595d6ef6bcacc8c67b408a010c45c0d788aab1467b858f85","block":5248553,"status":1}
+status #1 {"status":"Confirmed"}
+submit B (1h window) {"tx":"0xea04be7ddca411fa325bbcb9f857889db6ffb356b99a7dbb3709b78a59fa7eff","block":5248554,"status":1}
+dispute #2 {"tx":"0xe8ea6e541fc78b9ab9b05335a498737f72f4832cd6251ae5381a05dcec51f9b8","block":5248555,"status":1}
+status #2 {"status":"Disputed"}
+submit C (30s window) {"tx":"0x03467da91e2f6eef42e9015d8ad56143bf31d4f43702e1901ee942dca186e7bf","block":5248557,"status":1}
+worker tries confirm #3 {"rejected":"NotEmployer"}
+waiting 45s for the 30s window to pass …
+status #3 after wait {"status":"Expired"}
+late confirm #3 {"rejected":"DeadlinePassed"}
+markExpired #3 {"tx":"0xe42253305f4f1007df640af56d2b80bea36a2b51432cabd8b4cd273e37472ca6","block":5248568,"status":1}
+stored status #3 {"status":"Expired"}
+ids for report {"ids":[1,2,3]}
+
+RESULT {
+  "contract": "0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0",
+  "chainId": 400,
+  "worker": "0x2B3f3d7e30D0CD237d78a3A8a8d6fDD3D3a6d3f2",
+  "employer": "0xC8e6Df38f635932D4455B404EAAfB53666eAad81",
+  "reportHash": "0x1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db",
+  "steps": [
+    {
+      "step": "fund employer 0.05 MEC",
+      "tx": "0xa1bfe6b796ed4fad5f11a9235086d2048f49e6a006a61181dd5d1ce74cd53dec",
+      "block": 5248549,
+      "status": 1
+    },
+    {
+      "step": "submit A (1h window)",
+      "tx": "0x6ceceed0f8c210af7a3bcd0330ba7b0076c4784e1d54c78141b4f32f41665dbf",
+      "block": 5248551,
+      "status": 1
+    },
+    {
+      "step": "confirm #1",
+      "tx": "0x3ddeb1474cb120bc595d6ef6bcacc8c67b408a010c45c0d788aab1467b858f85",
+      "block": 5248553,
+      "status": 1
+    },
+    {
+      "step": "status #1",
+      "status": "Confirmed"
+    },
+    {
+      "step": "submit B (1h window)",
+      "tx": "0xea04be7ddca411fa325bbcb9f857889db6ffb356b99a7dbb3709b78a59fa7eff",
+      "block": 5248554,
+      "status": 1
+    },
+    {
+      "step": "dispute #2",
+      "tx": "0xe8ea6e541fc78b9ab9b05335a498737f72f4832cd6251ae5381a05dcec51f9b8",
+      "block": 5248555,
+      "status": 1
+    },
+    {
+      "step": "status #2",
+      "status": "Disputed"
+    },
+    {
+      "step": "submit C (30s window)",
+      "tx": "0x03467da91e2f6eef42e9015d8ad56143bf31d4f43702e1901ee942dca186e7bf",
+      "block": 5248557,
+      "status": 1
+    },
+    {
+      "step": "worker tries confirm #3",
+      "rejected": "NotEmployer"
+    },
+    {
+      "step": "status #3 after wait",
+      "status": "Expired"
+    },
+    {
+      "step": "late confirm #3",
+      "rejected": "DeadlinePassed"
+    },
+    {
+      "step": "markExpired #3",
+      "tx": "0xe42253305f4f1007df640af56d2b80bea36a2b51432cabd8b4cd273e37472ca6",
+      "block": 5248568,
+      "status": 1
+    },
+    {
+      "step": "stored status #3",
+      "status": "Expired"
+    },
+    {
+      "step": "ids for report",
+      "ids": [
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}

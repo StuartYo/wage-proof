@@ -103,3 +103,21 @@ OK   hub REST CORS header (171ms) {"accessControlAllowOrigin":"*"}
 2. 領到後：`npm run memo -- --amount <數量> --yes` → 到瀏覽器與 REST 看得到交易 → `npm run deploy:testnet` → 在測試網跑一次完整流程（要給第 2 個 EVM 帳號一點手續費當雇主）。
 3. 驗證區塊瀏覽器能不能顯示 EVM 合約；決定 https 轉接要不要做。
 4. 網頁改成可切換「本機鏈／測試網」。
+
+## 測試網實跑結果（2026-11-10 深夜，他本人領到水龍頭 2 MEC 之後）
+
+| 項目 | 結果 | 證據 |
+|---|---|---|
+| 備註交易（保底） | 成功。Cosmos 交易 `83ACC42B456413812C69E278BB894C2EF74D2B56B74188E35587EB25A9BBEA75`，高度 5248540，備註 `wage-proof:v1:sha256:1752775e…f9db`，同時把 1 MEC 轉到 EVM 部署帳號 | `docs/evidence/memo-tx-testnet.txt`；REST `/cosmos/tx/v1beta1/txs/<hash>` 讀回備註一致 |
+| 合約部署（EVM，鏈 ID 400） | 成功。合約 `0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0`，部署交易 `0xfa017bd5…c407`，區塊 5248543，gasUsed 735128 | `docs/evidence/deploy-testnet.txt`、`deployments/metestnet.json` |
+| 完整流程 | 三條路徑都照規則：#1 登記→雇主確認＝Confirmed；#2 登記→雇主異議＝Disputed；#3 登記（30 秒期限）→勞工想代按被拒（NotEmployer）→等 45 秒→逾期後雇主補按被拒（DeadlinePassed）→markExpired＝Expired | `docs/evidence/e2e-testnet.txt`（每筆交易雜湊都在裡面）；腳本 `scripts/e2e-testnet.mjs` |
+| 評審怎麼驗證 | EVM 交易可以用 https 的 Hub REST 反查：`/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash='0x…'`（實測查得到 #1 的確認交易，Cosmos 雜湊 A91FBD09…8663）。`/ethermint/evm/v1/code/<地址>` 這個 REST 路徑回 Not Implemented | 本節指令 |
+
+踩到的雷：
+- Hub 交易手續費有下限：低於 10000 umec 會被拒（`fee must greater than or equal 10000umec`）。`memo-tx.mjs` 已改成先模擬 gas、再付 max(gas×最低價, 10000 umec)，下限寫在 `config/network.json` 的 `minFeeUmec`。
+- 雇主帳號＝同一組測試助記詞的 EVM 第 1 號位址，由勞工帳號轉 0.05 MEC 當手續費。
+- 逾期路徑在公開鏈上只能真的等，示範影片要用 30 秒期限。
+
+剩餘測試幣（11-10）：主帳號約 0.9999 MEC、EVM 部署帳號約 0.95 MEC。
+
+還沒做：區塊瀏覽器網頁上看不看得到這個合約（沒開瀏覽器驗）；網頁前端接測試網（EVM RPC 是純 http，要 https 轉接，需他同意才部署到公開網址）；ME ID 等級名稱與「高級認證」的對應。
