@@ -14,6 +14,8 @@
 | 5 部署／memo 腳本 | 腳本寫好；**停在等領幣** | `docs/evidence/deploy-testnet-zero-balance.txt`、`memo-tx-zero-balance.txt`（兩者都 exit code 3、Nothing sent） |
 | 6 網頁殼 | 做了，只連本機鏈 | `web/index.html`、`web/app.js`；頁首、資料卡、頁尾三處「示範用合成資料 Synthetic demo data」 |
 
+金鑰自檢：`gitleaks git .` 輸出 `1 commits scanned ... no leaks found`；另用腳本比對 git 追蹤的 34 個檔案都不含助記詞（結果 clean）。commit 只在本機，沒有 push、沒有建遠端。
+
 ## 1. 測試錢包：為什麼有三個字串
 
 同一組助記詞推出兩個帳號，這跟官方 JS SDK 的設計一致（主帳號＋綁定的 ETH 子帳號，見 SDK `src/api/identity.ts` 的 `bindSubAccount`／`getMeIdBySubAccount`）：
