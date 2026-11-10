@@ -1,0 +1,26 @@
+run at 2026-11-10T16:25:48Z  base=https://wage-proof.vercel.app
+
+=== 0. GET /api/demo: employer list + rule
+{"employers":{"verified":"0xBdC0C26d93153628c9340A2Bd1D586b90D020C03","unverified":"0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa"},"minEmployerLevel":"one","worker":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4"}
+
+=== 1. unverified employer -> must be blocked, no transaction
+recordCount before: 8
+{"ok":false,"code":"employer_not_verified","action":"submit","sent":false,"meId":{"rule":"employer level >= one","minEmployerLevel":"one","employer":{"choice":"unverified","address":"0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa","ok":true,"level":"none","label":"未驗證 None","kycLevel":null,"status":"DID not found","did":null,"me1":"me1mhyngg3dww60msw6dej4mkzheewjck86450e7g","queryUrl":"https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g","checkedAt":"2026-11-10T16:25:51.930Z"},"worker":{"address":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","ok":true,"level":"one","label":"真人驗證 Real-person","kycLevel":"KYC_LEVEL_ONE","status":"DID_STATUS_ACTIVE","did":"2611109469679","me1":"me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v","queryUrl":"https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v","checkedAt":"2026-11-10T16:25:52.154Z"}},"found":"DID not found","queryUrl":"https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g","message":"雇主 0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa 的 ME ID 等級是「未驗證 None」（節點回：DID not found），規則要求至少「真人驗證 Real-person」，所以沒有送出交易"}
+HTTP 403
+recordCount after:  8
+RESULT: recordCount unchanged (8) -> no record created
+
+=== 2. bad employer values -> HTTP 400, nothing sent
+{"ok":false,"code":"bad_request","message":"employer must be one of verified/unverified"}
+HTTP 400
+{"ok":false,"code":"bad_request","message":"employer must be one of verified/unverified"}
+HTTP 400
+{"ok":false,"code":"bad_request","message":"employer must be one of verified/unverified"}
+HTTP 400
+recordCount after bad values: 8
+
+=== 3. verified employer -> submit goes through, response carries both levels
+recordCount before: 8
+{"ok":true,"action":"submit","signer":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","txHash":"0xb81ecb14ab088815cad295c617be812823652ebd63805fef50522a7d1ddeac36","verifyUrl":"https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash%3D'0xb81ecb14ab088815cad295c617be812823652ebd63805fef50522a7d1ddeac36'","meId":{"rule":"employer level >= one","minEmployerLevel":"one","employer":{"choice":"verified","address":"0xBdC0C26d93153628c9340A2Bd1D586b90D020C03","ok":true,"level":"two","label":"進階驗證 Advanced","kycLevel":"KYC_LEVEL_TWO","status":"DID_STATUS_ACTIVE","did":"2611108677483","me1":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","queryUrl":"https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","checkedAt":"2026-11-10T16:25:56.899Z"},"worker":{"address":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","ok":true,"level":"one","label":"真人驗證 Real-person","kycLevel":"KYC_LEVEL_ONE","status":"DID_STATUS_ACTIVE","did":"2611109469679","me1":"me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v","queryUrl":"https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v","checkedAt":"2026-11-10T16:25:52.154Z"}},"blockNumber":5249035,"receiptStatus":1,"id":9,"status":"Pending"}
+HTTP 200
+recordCount after:  9

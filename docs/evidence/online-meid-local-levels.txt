@@ -1,0 +1,85 @@
+run at 2026-11-10T16:22:26.046Z
+bech32 check: employer 0xBdC0… -> me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf (expected me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf)
+bech32 check: worker   0xde55… -> me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v (expected me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v)
+--- 1a has ME ID (demo employer, 0x input)
+{
+ "ok": true,
+ "level": "two",
+ "kycLevel": "KYC_LEVEL_TWO",
+ "status": "DID_STATUS_ACTIVE",
+ "did": "2611108677483",
+ "me1": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "checkedAt": "2026-11-10T16:22:26.593Z",
+ "cached": false
+}
+--- 1b has ME ID (demo worker, me1 input)
+{
+ "ok": true,
+ "level": "one",
+ "kycLevel": "KYC_LEVEL_ONE",
+ "status": "DID_STATUS_ACTIVE",
+ "did": "2611109469679",
+ "me1": "me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v",
+ "checkedAt": "2026-11-10T16:22:26.796Z",
+ "cached": false
+}
+--- 1c same employer again within 30 s (cache)
+{
+ "ok": true,
+ "level": "two",
+ "kycLevel": "KYC_LEVEL_TWO",
+ "status": "DID_STATUS_ACTIVE",
+ "did": "2611108677483",
+ "me1": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "checkedAt": "2026-11-10T16:22:26.593Z",
+ "cached": true
+}
+--- 2  no ME ID (fixed unverified address)
+{
+ "ok": true,
+ "level": "none",
+ "kycLevel": null,
+ "status": "DID not found",
+ "did": null,
+ "me1": "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+ "checkedAt": "2026-11-10T16:22:26.872Z",
+ "cached": false
+}
+--- 3a upstream failure: host unreachable
+{
+ "ok": false,
+ "code": "meid_lookup_failed",
+ "message": "Hub unreachable: fetch failed",
+ "httpStatus": null,
+ "me1": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "queryUrl": "http://127.0.0.1:9/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf"
+}
+--- 3b upstream failure: HTTP 502 HTML page
+{
+ "ok": false,
+ "code": "meid_lookup_failed",
+ "message": "unexpected Hub answer HTTP 502: <html>Bad Gateway</html>",
+ "httpStatus": 502,
+ "me1": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf"
+}
+--- 3c upstream failure: HTTP 500 but not 'DID not found'
+{
+ "ok": false,
+ "code": "meid_lookup_failed",
+ "message": "unexpected Hub answer HTTP 500: internal error",
+ "httpStatus": 500,
+ "me1": "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g"
+}
+--- 4  bad input
+{
+ "ok": false,
+ "code": "bad_address",
+ "message": "address must be 0x + 40 hex or me1…",
+ "input": "hello"
+}

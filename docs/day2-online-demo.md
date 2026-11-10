@@ -11,6 +11,7 @@
   ├─ 讀鏈：POST /api/rpc   → Vercel 函式 → http://118.175.0.249:8545（ME 測試網 EVM RPC）
   ├─ 寫鏈：POST /api/demo  → Vercel 函式，用兩個示範帳號簽名 → 同上 RPC
   └─ ME ID 查詢：瀏覽器直接打 https://beta-hub-1317.explorer-testnet.me（Hub REST，開放跨站）
+     （11-11 起 /api/demo 的 submit 也會在伺服器端查雇主 ME ID，見 docs/day3-meid.md）
 ```
 
 為什麼要中繼：EVM RPC 只有純 http＋裸 IP，https 網頁直接連會被瀏覽器擋（混合內容）。
@@ -31,18 +32,18 @@
 
 ## `/api/demo`：伺服器代簽的示範動作
 
-`GET` 回公開資訊（鏈 ID、合約、兩個示範地址、ABI、限制），不含任何金鑰。`POST` 只有四種：
+`GET` 回公開資訊（鏈 ID、合約、兩個示範地址、可選的兩個雇主、`minEmployerLevel`、ABI、限制），不含任何金鑰。`POST` 只有四種：
 
 | action | 參數 | 誰簽 |
 |---|---|---|
-| `submit` | `reportHash`（0x＋64 位十六進位）、`deadlineSeconds` 只能 30／60／3600 | 示範勞工 |
+| `submit` | `reportHash`（0x＋64 位十六進位）、`deadlineSeconds` 只能 30／60／3600、`employer` 只能 `verified`／`unverified`（不給＝`verified`，11-11 加） | 示範勞工 |
 | `confirm` | `id` | 示範雇主 |
 | `dispute` | `id`、`reasonHash`（理由在瀏覽器算成 SHA-256，鏈上只放指紋） | 示範雇主 |
 | `markExpired` | `id` | 示範勞工（合約允許任何人） |
 
-處理順序：檢查格式 → 頻率與每日上限 → 示範帳號餘額 → **先模擬呼叫合約**，合約拒絕就回 HTTP 409＋合約錯誤名（例如 `NotPending`、`DeadlinePassed`），不送交易 → 用寫死的 gas 上限送出 → 等出塊（最多 40 秒）→ 回交易雜湊、區塊、鏈上狀態、查證網址。
+處理順序：檢查格式 → 頻率與每日上限 →（只有 submit）查雇主 ME ID 等級，不到 `minEmployerLevel` 回 403 `employer_not_verified`、查詢失敗回 503 `meid_lookup_failed`，兩者都不送交易（見 `docs/day3-meid.md`）→ 示範帳號餘額 → **先模擬呼叫合約**，合約拒絕就回 HTTP 409＋合約錯誤名（例如 `NotPending`、`DeadlinePassed`），不送交易 → 用寫死的 gas 上限送出 → 等出塊（最多 40 秒）→ 回交易雜湊、區塊、鏈上狀態、查證網址。
 
-誰能確認或異議、期限、狀態轉換，全由合約判斷；伺服器不自己判斷對錯。查證網址是 Hub REST 用以太坊交易雜湊反查：
+誰能確認或異議、期限、狀態轉換，全由合約判斷。伺服器只多一條規則：登記時雇主要有 ME ID（因為 EVM 合約讀不到身分模組，見 `docs/day3-meid.md`）。查證網址是 Hub REST 用以太坊交易雜湊反查：
 `https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash='0x…'`
 
 ### 費用與濫用保護

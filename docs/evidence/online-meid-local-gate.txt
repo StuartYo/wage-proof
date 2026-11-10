@@ -1,0 +1,59 @@
+run at 2026-11-10T16:22:54.810Z (local handler, no network send expected)
+GET employers {
+  verified: '0xBdC0C26d93153628c9340A2Bd1D586b90D020C03',
+  unverified: '0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa'
+} minEmployerLevel one
+--- bad employer param 'boss'
+HTTP 400
+{
+ "ok": false,
+ "code": "bad_request",
+ "message": "employer must be one of verified/unverified"
+}
+--- employer given as raw address
+HTTP 400
+{
+ "ok": false,
+ "code": "bad_request",
+ "message": "employer must be one of verified/unverified"
+}
+--- unverified employer -> blocked
+HTTP 403
+{
+ "ok": false,
+ "code": "employer_not_verified",
+ "action": "submit",
+ "sent": false,
+ "meId": {
+  "rule": "employer level >= one",
+  "minEmployerLevel": "one",
+  "employer": {
+   "choice": "unverified",
+   "address": "0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa",
+   "ok": true,
+   "level": "none",
+   "label": "未驗證 None",
+   "kycLevel": null,
+   "status": "DID not found",
+   "did": null,
+   "me1": "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+   "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+   "checkedAt": "2026-11-10T16:22:55.055Z"
+  },
+  "worker": {
+   "address": "0xde555310fc573E5E9C5b8928a1E13913d28BaCe4",
+   "ok": true,
+   "level": "one",
+   "label": "真人驗證 Real-person",
+   "kycLevel": "KYC_LEVEL_ONE",
+   "status": "DID_STATUS_ACTIVE",
+   "did": "2611109469679",
+   "me1": "me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v",
+   "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v",
+   "checkedAt": "2026-11-10T16:22:55.054Z"
+  }
+ },
+ "found": "DID not found",
+ "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g",
+ "message": "雇主 0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa 的 ME ID 等級是「未驗證 None」（節點回：DID not found），規則要求至少「真人驗證 Real-person」，所以沒有送出交易"
+}

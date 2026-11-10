@@ -1,0 +1,43 @@
+Can an EVM contract on ME Hub read the ME ID (did/kyc) module? Checked 2026-11-10T16:27:30Z
+Source: github.com/openmetaearth/me-hub HEAD 8d93400 (2026-11-10), ethermint fork openmetaearth/ethermint@08a9eaaee040 (pinned in me-hub go.mod)
+
+== me-hub app/keepers/keepers.go: EVM keeper wiring (customContractFns = nil, default geth.NewEVM)
+319:	a.EvmKeeper = evmkeeper.NewKeeper(
+320:		ethermintevmkeeper.NewKeeper(
+321-			appCodec,
+322-			a.keys[evmtypes.StoreKey],
+323-			a.tkeys[evmtypes.TransientKey],
+324-			authtypes.NewModuleAddress(govtypes.ModuleName),
+325-			a.AccountKeeper,
+326-			a.BankKeeper,
+327-			a.StakingKeeper,
+328-			a.FeeMarketKeeper,
+329-			nil,
+330-			geth.NewEVM,
+331-			tracer,
+332-			a.GetSubspace(evmtypes.ModuleName),
+333-		))
+334-
+
+== ethermint fork x/evm/vm/geth/precompiles.go: only the standard Ethereum precompiles
+// current chain configuration and block height.
+func GetPrecompiles(cfg *params.ChainConfig, blockNumber *big.Int) evm.PrecompiledContracts {
+	var precompiles evm.PrecompiledContracts
+	switch {
+	case cfg.IsBerlin(blockNumber):
+		precompiles = vm.PrecompiledContractsBerlin
+	case cfg.IsIstanbul(blockNumber):
+		precompiles = vm.PrecompiledContractsIstanbul
+	case cfg.IsByzantium(blockNumber):
+		precompiles = vm.PrecompiledContractsByzantium
+	default:
+		precompiles = vm.PrecompiledContractsHomestead
+	}
+	return precompiles
+}
+
+== me-hub app/keepers/wasm_me_query.go: the DID query IS whitelisted, but for CosmWasm contracts only
+9:	didtypes "github.com/openmetaearth/me-hub/x/did/types"
+25:			"/metaearth.did.Query/Did":               &didtypes.QueryDidResponse{},
+
+Conclusion: no precompile / official interface lets an EVM (Solidity) contract read the ME ID module.

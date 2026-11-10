@@ -1,0 +1,24 @@
+Online page check, https://wage-proof.vercel.app/ , 2026-11-11 00:26-00:28 (Taiwan time)
+Method: Chrome, read page text + read-only JavaScript (no write button pressed; the ME ID lookup box is read-only).
+
+1) Top flag bar text:
+   "測試網的 ME ID 是模擬身分：官方說明只用來模擬業務邏輯，不涉及真實法律身分驗證"
+2) Lede, ".why" paragraph starts:
+   "為什麼要查真人：如果誰都能隨手開一堆新帳號當「雇主」，就能自己登記、自己按確認，灌出一堆假的「雇主已確認」紀錄，或冒充雇主替別人確認。所以登記前，伺服器會先到 …"
+3) Worker panel, "3 指定雇主 Employer":
+   示範雇主（已進階驗證） 0xBdC0C26d93153628c9340A2Bd1D586b90D020C03 進階驗證 Advanced 在鏈上查證
+   未驗證的地址（示範被擋下） 0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa 未驗證 None 在鏈上查證
+4) Records (first 3 of 10, innerText):
+   #9 等待雇主回應 Pending … 勞工 0xde5553…8BaCe4（示範勞工） 真人驗證 Real-person 在鏈上查證 雇主 0xBdC0C2…020C03（示範雇主） 進階驗證 Advanced 在鏈上查證 登記 0xb81ecb…deac36 在鏈上查證
+   #8 逾期未回應 Expired … 勞工 … 真人驗證 Real-person … 雇主 … 進階驗證 Advanced …
+   #7 雇主已確認 Confirmed … 勞工 … 真人驗證 Real-person … 雇主 … 進階驗證 Advanced …
+5) ME ID lookup box (same labels):
+   0xDdC934222D73b4Fdc1dA6e655dd857Ce5d2C58fa -> "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g / 未驗證 None　節點回：DID not found　在鏈上查證"
+   me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v -> "真人驗證 Real-person　節點回：KYC_LEVEL_ONE，DID_STATUS_ACTIVE　在鏈上查證"
+6) 390 px wide (same-origin iframe 390 px, full page loaded 12 s):
+   {"iframeWidth":390,"clientW":375,"scrollW":375,"recs":10,"lvlBadges":22,"overflowing":[]}
+   -> no element outside the viewport; scrollWidth == clientWidth (375 = 390 minus scrollbar).
+
+Not checked in the browser: the red "沒有送出" panel after pressing 登記 with the unverified employer
+(pressing write buttons is blocked for the assistant). The same server response that fills it is in
+docs/evidence/online-meid-online.txt section 1.

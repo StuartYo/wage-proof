@@ -3,11 +3,23 @@
 // gas limits and the two signer accounts are fixed on the server. Whether an action is allowed
 // (who, which state, which deadline) is decided ONLY by the contract: we simulate the call,
 // and if the contract rejects it we return the contract's error name without sending.
+// One extra rule lives here (not in the contract, because the EVM cannot read the ME ID module):
+// on submit, the chosen employer must hold an ME ID of at least SETTINGS.minEmployerLevel,
+// read live from Hub REST; otherwise "employer_not_verified" and nothing is sent.
 //
 // Abuse limits are in memory (per server instance): they reset on a cold start and are not
 // shared between instances. See docs/day2-online-demo.md.
 import { ethers } from "ethers";
-import { SETTINGS, ABI, STATUS, verifyUrl, clientIp, json, readCapped } from "./_lib.mjs";
+import { SETTINGS, ABI, STATUS, LEVEL_RANK, verifyUrl, clientIp, json, readCapped, meIdLevel } from "./_lib.mjs";
+
+const LEVEL_LABEL = { none: "未驗證 None", one: "真人驗證 Real-person", two: "進階驗證 Advanced" };
+const EMPLOYER_CHOICES = ["verified", "unverified"];
+function employerAddress(choice, s) {
+  return choice === "verified" ? s.employer.address : SETTINGS.unverifiedEmployer;
+}
+const pick = (r) => (r.ok
+  ? { ok: true, level: r.level, label: LEVEL_LABEL[r.level], kycLevel: r.kycLevel, status: r.status, did: r.did, me1: r.me1, queryUrl: r.queryUrl, checkedAt: r.checkedAt }
+  : { ok: false, code: r.code, message: r.message, httpStatus: r.httpStatus ?? null, me1: r.me1, queryUrl: r.queryUrl });
 
 const HEX32 = /^0x[0-9a-fA-F]{64}$/;
 const iface = new ethers.Interface(ABI);
@@ -58,7 +70,10 @@ function parseAction(b) {
       const secs = Number(b.deadlineSeconds);
       if (typeof b.reportHash !== "string" || !HEX32.test(b.reportHash)) return { error: "reportHash must be 0x + 64 hex" };
       if (!SETTINGS.allowedWindows.includes(secs)) return { error: `deadlineSeconds must be one of ${SETTINGS.allowedWindows.join("/")}` };
-      return { who: "worker", fn: "submit", args: (s) => [b.reportHash, s.employer.address, secs] };
+      // employer: only a key from the server's fixed list (default "verified"); never a free address
+      const choice = b.employer === undefined ? "verified" : b.employer;
+      if (!EMPLOYER_CHOICES.includes(choice)) return { error: `employer must be one of ${EMPLOYER_CHOICES.join("/")}` };
+      return { who: "worker", fn: "submit", employerChoice: choice, args: (s) => [b.reportHash, employerAddress(choice, s), secs] };
     }
     case "confirm":
       if (!idOk) return { error: "id must be a positive integer" };
@@ -89,6 +104,8 @@ export async function GET() {
     chainId: SETTINGS.chainId, contract: SETTINGS.contract, hubRest: SETTINGS.hubRest,
     worker: s?.worker.address ?? null, employer: s?.employer.address ?? null,
     windows: SETTINGS.allowedWindows, abi: ABI,
+    employers: s ? { verified: s.employer.address, unverified: SETTINGS.unverifiedEmployer } : null,
+    minEmployerLevel: SETTINGS.minEmployerLevel,
     limits: { writesPerIpPerMinute: SETTINGS.writesPerIpPerMinute, writesPerDay: SETTINGS.writesPerDay, note: "in-memory, per server instance; resets on cold start" },
   });
 }
@@ -111,6 +128,26 @@ export async function POST(request) {
   const contract = new ethers.Contract(SETTINGS.contract, ABI, signer);
   const args = act.args(s);
 
+  // real-person gate (submit only): read both parties' ME ID level from Hub REST right now.
+  // Employer below minEmployerLevel -> no transaction. Lookup failure -> no transaction (never guessed).
+  let meId = null;
+  if (act.fn === "submit") {
+    const employerAddr = args[1];
+    const [emp, wrk] = await Promise.all([meIdLevel(employerAddr), meIdLevel(s.worker.address)]);
+    meId = { rule: `employer level >= ${SETTINGS.minEmployerLevel}`, minEmployerLevel: SETTINGS.minEmployerLevel,
+      employer: { choice: act.employerChoice, address: employerAddr, ...pick(emp) },
+      worker: { address: s.worker.address, ...pick(wrk) } };
+    if (!emp.ok) {
+      return json(503, { ok: false, code: "meid_lookup_failed", action: "submit", sent: false, meId,
+        message: `查不到雇主的 ME ID 等級（${emp.message}），無法判斷，所以沒有送出交易` });
+    }
+    if (LEVEL_RANK[emp.level] < LEVEL_RANK[SETTINGS.minEmployerLevel]) {
+      return json(403, { ok: false, code: "employer_not_verified", action: "submit", sent: false, meId,
+        found: emp.kycLevel ?? emp.status, queryUrl: emp.queryUrl,
+        message: `雇主 ${employerAddr} 的 ME ID 等級是「${LEVEL_LABEL[emp.level]}」（節點回：${emp.kycLevel ?? emp.status}），規則要求至少「${LEVEL_LABEL[SETTINGS.minEmployerLevel]}」，所以沒有送出交易` });
+    }
+  }
+
   try {
     return await serial(act.who, async () => {
       const bal = await provider.getBalance(signer.address);
@@ -119,7 +156,7 @@ export async function POST(request) {
       }
       // the contract decides: simulate first, send only if the contract would accept it
       try { await contract[act.fn].staticCall(...args); }
-      catch (e) { return json(409, { ok: false, code: "contract_rejected", action: body.action, contractError: revertName(e), message: `合約拒絕：${revertName(e)}` }); }
+      catch (e) { return json(409, { ok: false, code: "contract_rejected", action: body.action, contractError: revertName(e), message: `合約拒絕：${revertName(e)}`, ...(meId ? { meId } : {}) }); }
 
       const tx = await contract[act.fn](...args, {
         gasLimit: SETTINGS.gasLimit[act.fn],
@@ -128,6 +165,7 @@ export async function POST(request) {
       });
       const rc = await tx.wait(1, SETTINGS.receiptWaitMs).catch(() => null);
       const out = { ok: true, action: body.action, signer: signer.address, txHash: tx.hash, verifyUrl: verifyUrl(tx.hash) };
+      if (meId) out.meId = meId;
       if (!rc) return json(202, { ...out, receipt: "pending", message: "交易已送出，尚未出塊" });
       out.blockNumber = rc.blockNumber;
       out.receiptStatus = rc.status;
