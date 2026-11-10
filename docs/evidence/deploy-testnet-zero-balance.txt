@@ -1,0 +1,4 @@
+network=metestnet chainId=400 deployer=0x2B3f3d7e30D0CD237d78a3A8a8d6fDD3D3a6d3f2
+balance=0.0 MEC (EVM shows 18 decimals; 1 umec = 1e10 wei)
+STOP: balance is 0. Waiting for testnet MEC from the official faucet (owner claims it). Nothing sent.
+exit code: 3

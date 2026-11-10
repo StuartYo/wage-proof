@@ -1,0 +1,25 @@
+{
+  "queriedAt": "2026-11-10T15:26:52.309Z",
+  "input": "0x2B3f3d7e30D0CD237d78a3A8a8d6fDD3D3a6d3f2",
+  "queried": "me19vln6l3s6rxjxltc5w5234ha60f6d5ljvj9ufm",
+  "hasMeId": false,
+  "note": "node answered HTTP 500: codespace did code 111: DID not found",
+  "raw": {
+    "url": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me19vln6l3s6rxjxltc5w5234ha60f6d5ljvj9ufm",
+    "status": 500,
+    "body": {
+      "code": 2,
+      "message": "codespace did code 111: DID not found",
+      "details": []
+    }
+  },
+  "subAccountRaw": {
+    "url": "https://beta-hub-1317.explorer-testnet.me/metaearth/kyc/QuerySubAccountDidResponse?sub_account=0x2B3f3d7e30D0CD237d78a3A8a8d6fDD3D3a6d3f2",
+    "status": 500,
+    "body": {
+      "code": 13,
+      "message": "failed to get DID by sub-account",
+      "details": []
+    }
+  }
+}

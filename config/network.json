@@ -1,0 +1,27 @@
+{
+  "_note": "ME Network testnet endpoints. One file for every endpoint. 'verified' is filled by scripts/check-endpoints.mjs (read-only checks).",
+  "network": "me-testnet",
+  "cosmosChainId": "mechain_400-1",
+  "bech32Prefix": "me",
+  "denom": "umec",
+  "displayDenom": "MEC",
+  "decimals": 8,
+  "minGasPrice": "0.02umec",
+  "hub": {
+    "rest": "https://beta-hub-1317.explorer-testnet.me",
+    "rpc": "https://beta-hub-26657.explorer-testnet.me"
+  },
+  "evm": {
+    "chainId": 400,
+    "rpc": "http://118.175.0.249:8545",
+    "rpcCandidatesHttps": [
+      "https://beta-hub-8545.explorer-testnet.me"
+    ]
+  },
+  "explorer": "https://www.explorer-testnet.me",
+  "faucet": "https://www.mec.me/en-US/faucet",
+  "hdPaths": {
+    "main": "m/44'/118'/0'/0/0",
+    "evm": "m/44'/60'/0'/0/0"
+  }
+}

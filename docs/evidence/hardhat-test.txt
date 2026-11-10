@@ -1,0 +1,12 @@
+  WageProof
+    ✔ submit stores hash, parties, deadline and emits Submitted
+    ✔ submit rejects zero hash, bad employer, window out of range
+    ✔ employer confirms within deadline
+    ✔ employer disputes with a reason hash
+    ✔ only the named employer may confirm or dispute
+    ✔ a record cannot be handled twice
+    ✔ after the deadline the employer can no longer respond; anyone can mark it expired
+    ✔ response exactly at the deadline second is still accepted
+    ✔ unknown ids are rejected
+    ✔ same report can be submitted again and both ids are listed
+  10 passing (375ms)

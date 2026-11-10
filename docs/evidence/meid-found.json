@@ -1,0 +1,25 @@
+{
+  "queriedAt": "2026-11-10T15:26:51.313Z",
+  "input": "me1ru7x754mqf8xfluexlnpdcpqm3k5439n42f4dk",
+  "queried": "me1ru7x754mqf8xfluexlnpdcpqm3k5439n42f4dk",
+  "hasMeId": true,
+  "active": true,
+  "status": "DID_STATUS_ACTIVE",
+  "kycLevel": "KYC_LEVEL_ONE",
+  "raw": {
+    "url": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1ru7x754mqf8xfluexlnpdcpqm3k5439n42f4dk",
+    "status": 200,
+    "body": {
+      "info": {
+        "did": "2611102511775",
+        "address": "me1ru7x754mqf8xfluexlnpdcpqm3k5439n42f4dk",
+        "pubkey": "{\"@type\":\"/cosmos.crypto.secp256k1.PubKey\",\"key\":\"Ailp9DM5SFsgZ+AJES0nD5dfO+tNHibjihSi1FjKFlYV\"}",
+        "status": "DID_STATUS_ACTIVE",
+        "regionId": "me_earth",
+        "kycLevel": "KYC_LEVEL_ONE",
+        "sub_account": ""
+      }
+    }
+  },
+  "subAccountRaw": null
+}

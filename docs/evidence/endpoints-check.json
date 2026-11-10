@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-11-10T15:26:19.319Z",
+  "results": [
+    {
+      "name": "hub REST node_info",
+      "ok": true,
+      "ms": 595,
+      "status": 200,
+      "network": "mechain_400-1",
+      "appVersion": "v2.0.16-7-g99b3e42d"
+    },
+    {
+      "name": "hub REST latest block",
+      "ok": true,
+      "ms": 217,
+      "status": 200,
+      "height": "5248306",
+      "time": "2026-11-10T15:26:09.898568224Z"
+    },
+    {
+      "name": "hub RPC /status",
+      "ok": true,
+      "ms": 1088,
+      "status": 200,
+      "network": "mechain_400-1",
+      "height": "5248306",
+      "catchingUp": false
+    },
+    {
+      "name": "EVM eth_chainId",
+      "ok": true,
+      "ms": 479,
+      "url": "http://118.175.0.249:8545",
+      "chainIdHex": "0x190",
+      "chainId": 400
+    },
+    {
+      "name": "EVM eth_blockNumber",
+      "ok": true,
+      "ms": 495,
+      "url": "http://118.175.0.249:8545",
+      "blockNumber": 5248306
+    },
+    {
+      "name": "EVM gasPrice",
+      "ok": true,
+      "ms": 242,
+      "gasPriceWei": "7"
+    },
+    {
+      "name": "EVM CORS header (simulated Origin)",
+      "ok": true,
+      "ms": 237,
+      "accessControlAllowOrigin": "*"
+    },
+    {
+      "name": "EVM https candidate https://beta-hub-8545.explorer-testnet.me",
+      "ok": false,
+      "ms": 617,
+      "error": "ENOTFOUND"
+    },
+    {
+      "name": "hub REST CORS header",
+      "ok": true,
+      "ms": 171,
+      "accessControlAllowOrigin": "*"
+    }
+  ]
+}

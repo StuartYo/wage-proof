@@ -1,0 +1,24 @@
+{
+  "_label": "示範用合成資料 Synthetic demo data — 人名、公司、金額全部虛構",
+  "reportType": "payslip-vs-attendance comparison",
+  "schemaVersion": 1,
+  "period": "2026-10",
+  "worker": { "displayName": "示範勞工 A（虛構）", "id": "DEMO-W-001" },
+  "employer": { "displayName": "範例餐飲股份有限公司（虛構）", "id": "DEMO-E-001" },
+  "hourlyWageTWD": 196,
+  "attendance": { "regularHours": 160, "overtimeHours": 10, "source": "synthetic clock-in export" },
+  "payslip": { "regularHours": 160, "overtimeHours": 8, "source": "synthetic payslip" },
+  "findings": [
+    {
+      "item": "overtime hours",
+      "attendance": 10,
+      "payslip": 8,
+      "differenceHours": 2,
+      "estimatedShortfallTWD": 523,
+      "basis": "196 x 4/3 x 2 hours, rounded; demo figures only"
+    }
+  ],
+  "summary": "出勤紀錄比薪資單多 2 小時加班，估計少算約 NT$523（示範數字）。",
+  "generatedBy": "wage-proof demo fixture (hand-written synthetic data, no real person)",
+  "createdAt": "2026-11-10T00:00:00+08:00"
+}

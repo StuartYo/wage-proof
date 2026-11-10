@@ -1,0 +1,7 @@
+#1 confirm path -> Confirmed
+#2 dispute path -> Disputed
+#3 worker tries confirm -> rejected (NotEmployer)
+#3 after 31s -> effective Expired
+#3 late confirm -> rejected (DeadlinePassed)
+#3 markExpired -> stored Expired
+ids for report 0x1752775e6c…: 1,2,3

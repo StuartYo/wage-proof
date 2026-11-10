@@ -1,0 +1,13 @@
+{
+  "chainId": "mechain_400-1",
+  "from": "me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc",
+  "to": "me19vln6l3s6rxjxltc5w5234ha60f6d5ljvj9ufm",
+  "amount": "1umec",
+  "memo": "wage-proof:v1:sha256:1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db",
+  "balance": {
+    "denom": "umec",
+    "amount": "0"
+  }
+}
+STOP: balance is 0. Waiting for testnet MEC from the official faucet (owner claims it). Nothing sent.
+exit code: 3

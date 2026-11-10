@@ -1,0 +1,17 @@
+{
+  "queriedAt": "2026-11-10T15:26:51.720Z",
+  "input": "me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc",
+  "queried": "me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc",
+  "hasMeId": false,
+  "note": "node answered HTTP 500: codespace did code 111: DID not found",
+  "raw": {
+    "url": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc",
+    "status": 500,
+    "body": {
+      "code": 2,
+      "message": "codespace did code 111: DID not found",
+      "details": []
+    }
+  },
+  "subAccountRaw": null
+}
