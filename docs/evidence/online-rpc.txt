@@ -1,0 +1,42 @@
+# online check 2026-11-10T15:58:28Z  base=https://wage-proof.vercel.app
+
+## eth_chainId
+$ curl -s -X POST $U/api/rpc -d {"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}
+{"jsonrpc":"2.0","id":1,"result":"0x190"}
+
+
+## eth_sendRawTransaction (must be refused)
+{"jsonrpc":"2.0","id":2,"error":{"code":-32601,"message":"method not allowed: eth_sendRawTransaction"}}
+HTTP 403
+
+## eth_accounts (not whitelisted, must be refused)
+{"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"method not allowed: eth_accounts"}}
+HTTP 403
+
+## batch of 11 (must be refused)
+{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"batch larger than 10"}}
+HTTP 400
+
+## batch of 2 allowed reads
+[{"jsonrpc":"2.0","id":1,"result":"0x190"},{"jsonrpc":"2.0","id":2,"result":"0x5016bb"}]
+
+HTTP 200
+
+## 9000-byte body (must be refused)
+{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"request larger than 8192 bytes"}}
+HTTP 413
+
+## eth_getLogs for another address (must be refused)
+{"jsonrpc":"2.0","id":4,"error":{"code":-32601,"message":"eth_getLogs only for the demo contract address"}}
+HTTP 403
+
+## GET /api/demo (public info, no keys)
+{"chainId":400,"contract":"0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0","hubRest":"https://beta-hub-1317.explorer-testnet.me","worker":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","employer":"0xBdC0C26d93153628c9340A2Bd1D586b90D020C03","windows":[30,60,3600],"limits":{"writesPerIpPerMinute":6,"writesPerDay":300,"note":"in-memory, per server instance; resets on cold start"}}
+
+## submit with a window that is not 30/60/3600 (must be refused)
+{"ok":false,"code":"bad_request","message":"deadlineSeconds must be one of 30/60/3600"}
+HTTP 400
+
+## unknown action (must be refused)
+{"ok":false,"code":"bad_request","message":"action must be submit | confirm | dispute | markExpired"}
+HTTP 400

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci --omit=dev --ignore-scripts",
+  "buildCommand": "node scripts/build-public.mjs",
+  "outputDirectory": "public",
+  "functions": {
+    "api/demo.mjs": { "maxDuration": 60 },
+    "api/rpc.mjs": { "maxDuration": 20 }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://beta-hub-1317.explorer-testnet.me; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'" }
+      ]
+    }
+  ]
+}

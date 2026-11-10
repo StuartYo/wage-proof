@@ -7,3 +7,8 @@ cache/
 typechain-types/
 coverage/
 deployments/localhost.json
+.env.demo
+.vercel/
+public/
+
+.vercel

@@ -3,84 +3,166 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>工資證據確認或異議｜本機示範</title>
+<title>工資證據：確認或異議｜ME 測試網線上示範</title>
 <style>
-  :root { --ink:#16181d; --mute:#5b6270; --line:#d9dce3; --bg:#f6f7f9; --card:#fff; --acc:#1f5eff; --ok:#147a3d; --warn:#a15c00; --bad:#b3261e; }
+  :root {
+    --ink: #121417; --mute: #5d636e; --rule: #c9ccd2; --faint: #eceef1; --paper: #ffffff;
+    --act: #0b57d0; --ok: #1b6e3a; --bad: #a3261b; --wait: #8a5a00; --gone: #5d636e;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; font: 15px/1.6 system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif; color:var(--ink); background:var(--bg); }
-  .synth { background:#fff4d6; color:#5a4100; font-size:13px; padding:6px 16px; border-bottom:1px solid #f0d58a; }
-  header, main, footer { max-width: 960px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 22px; margin: 8px 0 4px; }
-  .sub { color: var(--mute); margin: 0; }
-  .roles { display:flex; gap:8px; margin: 16px 0; }
-  .roles button { flex:1; padding:10px; border:1px solid var(--line); background:var(--card); border-radius:8px; cursor:pointer; font-size:15px; }
-  .roles button[aria-pressed="true"] { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); font-weight:600; }
-  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
-  .card h2 { font-size:16px; margin:0 0 8px; }
-  label { display:block; font-size:13px; color:var(--mute); margin-top:8px; }
-  input { width:100%; padding:8px; border:1px solid var(--line); border-radius:6px; font: inherit; }
-  button.act { margin-top:10px; padding:8px 14px; border-radius:6px; border:1px solid var(--acc); background:var(--acc); color:#fff; cursor:pointer; }
-  button.act.secondary { background:#fff; color:var(--acc); }
-  button.act:disabled { opacity:.4; cursor:not-allowed; }
-  code { font-size:12px; word-break: break-all; }
-  table { width:100%; border-collapse: collapse; font-size:14px; }
-  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align: top; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid currentColor; }
-  .s1 { color: var(--warn); } .s2 { color: var(--ok); } .s3 { color: var(--bad); } .s4 { color: var(--mute); }
-  #log { font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; max-height: 160px; overflow:auto; background:#f1f2f5; padding:8px; border-radius:6px; }
-  footer { color: var(--mute); font-size: 13px; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  code, .mono { font-family: var(--mono); font-size: 13px; word-break: break-all; }
+
+  .flag { background: var(--ink); color: #fff; font-size: 13px; letter-spacing: .02em; }
+  .flag .wrap { display: flex; flex-wrap: wrap; gap: 4px 20px; padding-top: 8px; padding-bottom: 8px; }
+  .flag b { font-weight: 600; }
+  .flag a { color: #fff; }
+
+  header.top { padding-top: 40px; padding-bottom: 8px; }
+  h1 { font-size: clamp(26px, 5vw, 38px); line-height: 1.25; margin: 0 0 14px; letter-spacing: -.01em; }
+  h1 span { display: block; font-size: .5em; color: var(--mute); font-weight: 500; letter-spacing: 0; margin-top: 6px; }
+  .lede { max-width: 46em; color: var(--mute); margin: 0 0 28px; }
+
+  .roles { display: inline-flex; border: 2px solid var(--ink); }
+  .roles button { font: inherit; font-weight: 600; padding: 10px 22px; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; min-height: 44px; }
+  .roles button + button { border-left: 2px solid var(--ink); }
+  .roles button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .whoami { margin: 14px 0 0; font-size: 14px; color: var(--mute); }
+
+  section.block { border-top: 2px solid var(--ink); margin-top: 48px; padding-top: 20px; }
+  section.block > h2 { font-size: 20px; margin: 0 0 6px; }
+  section.block > h2 small { font-size: 14px; font-weight: 500; color: var(--mute); margin-left: 8px; }
+  .note { color: var(--mute); font-size: 14px; margin: 0 0 22px; max-width: 48em; }
+  .tagline { font-size: 13px; border-left: 4px solid var(--wait); padding: 4px 10px; margin: 0 0 22px; background: #fff8e6; }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 22px; }
+  legend { font-weight: 600; margin-bottom: 10px; padding: 0; }
+  .opt { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--faint); cursor: pointer; }
+  .opt input { margin-top: 5px; width: 18px; height: 18px; }
+  .opt .t { font-weight: 600; }
+  .opt .d { color: var(--mute); font-size: 14px; }
+  .windows { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .windows label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+  .hashline { font-size: 14px; margin: -8px 0 22px; }
+
+  .btn { font: inherit; font-weight: 600; padding: 10px 18px; min-height: 44px; border: 2px solid var(--act); background: var(--act); color: #fff; cursor: pointer; }
+  .btn.ghost { background: var(--paper); color: var(--act); }
+  .btn.ink { border-color: var(--ink); background: var(--paper); color: var(--ink); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn.busy { opacity: .6; cursor: progress; }
+
+  .rec { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 6px 24px; padding: 18px 0 18px 14px; border-bottom: 1px solid var(--rule); border-left: 4px solid var(--rule); margin-bottom: 2px; }
+  .rec.s1 { border-left-color: var(--wait); } .rec.s2 { border-left-color: var(--ok); }
+  .rec.s3 { border-left-color: var(--bad); } .rec.s4 { border-left-color: var(--gone); }
+  .rec .id { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+  .rec .st { font-weight: 700; }
+  .s1 .st { color: var(--wait); } .s2 .st { color: var(--ok); } .s3 .st { color: var(--bad); } .s4 .st { color: var(--gone); }
+  .rec .kv { font-size: 13px; color: var(--mute); }
+  .rec .kv b { color: var(--ink); font-weight: 600; }
+  .rec .acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+  .rec .acts input { font: inherit; font-size: 15px; padding: 9px 10px; min-height: 44px; border: 1px solid var(--rule); flex: 1 1 260px; }
+  .rec .txs { grid-column: 2 / -1; font-size: 13px; }
+  .rec .txs div { margin-top: 2px; }
+  .count { font-family: var(--mono); font-weight: 700; }
+  .empty { color: var(--mute); padding: 18px 0; }
+
+  #log { font: 12.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-all; background: var(--faint); padding: 12px 14px; max-height: 240px; overflow: auto; margin: 0; }
+  #log a { color: var(--act); }
+
+  .meid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .meid input { font: inherit; font-family: var(--mono); font-size: 14px; padding: 9px 10px; min-height: 44px; border: 1px solid var(--rule); flex: 1 1 320px; }
+  #meidOut { margin: 16px 0 0; min-height: 1.6em; }
+
+  footer { border-top: 2px solid var(--ink); margin-top: 56px; padding: 20px 0 48px; color: var(--mute); font-size: 13px; }
+  footer p { margin: 0 0 8px; }
+  a { color: var(--act); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    header.top { padding-top: 28px; }
+    .roles { display: flex; } .roles button { flex: 1; padding: 10px 8px; }
+    .rec { grid-template-columns: 1fr; padding-left: 12px; }
+    .rec .acts, .rec .txs { grid-column: 1; }
+    section.block { margin-top: 40px; }
+  }
 </style>
 </head>
 <body>
-<div class="synth" data-synthetic="header">示範用合成資料 Synthetic demo data：頁面上的人名、公司、金額全部虛構。</div>
-<header>
-  <h1>工資證據：確認或異議</h1>
-  <p class="sub">鏈上只記報告指紋、地址、時間、狀態。報告本身留在本機。目前連的是本機模擬鏈（不是測試網）。</p>
-  <div class="roles" role="group" aria-label="切換角色">
-    <button id="roleWorker" aria-pressed="true">我是勞工</button>
-    <button id="roleEmployer" aria-pressed="false">我是雇主</button>
+<div class="flag" data-synthetic="top"><div class="wrap">
+  <span><b>示範用合成資料 Synthetic demo data</b>：報告內的人名、公司、金額全部虛構</span>
+  <span><b>ME 測試網 Testnet</b>（鏈 ID 400），測試幣沒有價值</span>
+</div></div>
+
+<header class="top wrap">
+  <h1>工資證據：確認或異議<span>Wage evidence — confirm or dispute, on ME Network</span></h1>
+  <p class="lede">勞工把「薪資單與出勤比對報告」的指紋（SHA-256）登記到鏈上，指定雇主要在期限內確認或異議；過了期限沒回應，任何人都能記為「逾期未回應」。鏈上只有指紋、地址、時間、狀態，報告本身不上鏈。這個線上示範由伺服器用兩個示範帳號代簽，不用裝錢包、不用領幣；誰能做什麼一律由合約判斷。</p>
+  <div class="roles" role="group" aria-label="切換角色 Switch role">
+    <button id="roleWorker" aria-pressed="true">勞工 Worker</button>
+    <button id="roleEmployer" aria-pressed="false">雇主 Employer</button>
   </div>
-  <p class="sub">目前身分地址：<code id="me">連線中…</code></p>
+  <p class="whoami">目前身分：<span id="me">讀取中…</span></p>
 </header>
-<main>
-  <div class="grid">
-    <section class="card" id="workerCard">
-      <h2>勞工：登記比對報告的指紋</h2>
-      <div class="synth" data-synthetic="card" style="border-radius:6px">示範用合成資料 Synthetic demo data</div>
-      <p id="reportSummary" class="sub">讀取示範報告…</p>
-      <label>報告指紋（SHA-256，由瀏覽器自己算）</label>
-      <code id="reportHash">—</code>
-      <label for="deadline">雇主回應期限（秒，示範可調短，最少 30）</label>
-      <input id="deadline" type="number" min="30" value="60">
-      <button class="act" id="submitBtn">登記上鏈</button>
-    </section>
-    <section class="card">
-      <h2>只讀 ME ID：這個地址是不是通過驗證的真人</h2>
-      <label for="meidAddr">地址（me1… 或 0x…），查的是 ME 測試網</label>
-      <input id="meidAddr" placeholder="me1...">
-      <button class="act secondary" id="meidBtn">查詢</button>
-      <p id="meidOut" class="sub"></p>
-    </section>
-  </div>
-  <section class="card" style="margin-top:16px">
-    <h2>紀錄</h2>
-    <table>
-      <thead><tr><th>#</th><th>狀態</th><th>期限</th><th>報告指紋</th><th>動作</th></tr></thead>
-      <tbody id="rows"><tr><td colspan="5">尚無紀錄</td></tr></tbody>
-    </table>
-    <button class="act secondary" id="ffBtn" title="只在本機模擬鏈有效">快轉 60 秒（本機鏈專用）</button>
+
+<main class="wrap">
+  <section class="block" id="workerPanel">
+    <h2>登記比對報告<small>Submit</small></h2>
+    <p class="tagline" data-synthetic="panel">示範用合成資料 Synthetic demo data ｜ 寫入 ME 測試網 Testnet，交易公開可查</p>
+    <fieldset>
+      <legend>1　選一份比對報告</legend>
+      <div id="reports"><p class="empty">讀取示範報告…</p></div>
+    </fieldset>
+    <p class="hashline">報告指紋（瀏覽器自己算的 SHA-256）：<code id="reportHash">—</code></p>
+    <fieldset>
+      <legend>2　雇主回應期限 Deadline</legend>
+      <div class="windows">
+        <label><input type="radio" name="win" value="30" checked> 30 秒（看逾期用）</label>
+        <label><input type="radio" name="win" value="60"> 60 秒</label>
+        <label><input type="radio" name="win" value="3600"> 1 小時</label>
+      </div>
+    </fieldset>
+    <button class="btn" id="submitBtn">登記上鏈 Submit</button>
   </section>
-  <section class="card" style="margin-top:16px">
-    <h2>操作紀錄</h2>
-    <div id="log"></div>
+
+  <section class="block" id="employerPanel" hidden>
+    <h2>待我回應<small>Pending for this employer</small></h2>
+    <p class="note">只列出指定給目前雇主、還在期限內的紀錄。異議理由只在你的瀏覽器算成指紋，鏈上只放指紋。</p>
+    <div id="pending"><p class="empty">讀取中…</p></div>
+  </section>
+
+  <section class="block">
+    <h2>鏈上紀錄<small>Records, read from chain</small></h2>
+    <p class="note">狀態、期限、地址都直接從合約讀（每幾秒更新一次），不是網頁自己記的。倒數用鏈上時間計算。顯示最新 10 筆。</p>
+    <div id="rows"><p class="empty">讀取中…</p></div>
+  </section>
+
+  <section class="block">
+    <h2>操作紀錄<small>Activity</small></h2>
+    <pre id="log"></pre>
+  </section>
+
+  <section class="block">
+    <h2>真人驗證查詢<small>ME ID lookup, read-only</small></h2>
+    <p class="note">輸入 me1 開頭的地址，網頁直接向 ME 測試網 Hub 查詢這個地址有沒有 ME ID，照實顯示節點回傳的狀態與等級字樣。</p>
+    <div class="meid">
+      <input id="meidAddr" placeholder="me1…" autocomplete="off" spellcheck="false" aria-label="me1 地址">
+      <button class="btn ink" id="meidBtn">查詢 Lookup</button>
+    </div>
+    <p id="meidOut"></p>
   </section>
 </main>
+
 <footer>
-  <div class="synth" data-synthetic="footer">示範用合成資料 Synthetic demo data</div>
-  <p>原型：只連本機模擬鏈。不構成法律意見，鏈上紀錄的法律效力未經查證。</p>
+  <div class="wrap">
+    <p data-synthetic="footer"><b>示範用合成資料 Synthetic demo data ｜ ME 測試網 Testnet</b>：所有報告、理由皆為虛構；兩個示範帳號只有測試幣，隨時可能作廢重產。</p>
+    <p>合約 <code id="contractAddr">—</code>　<a id="contractLink" href="#" target="_blank" rel="noopener">在鏈上查證</a></p>
+    <p>原型作品，不構成法律意見；鏈上紀錄在勞資調解中的法律效力未經查證。</p>
+  </div>
 </footer>
+
 <script src="/vendor/ethers.umd.min.js"></script>
 <script src="/app.js"></script>
 </body>

@@ -1,0 +1,32 @@
+# online write flows 2026-11-10T15:58:46Z  base=https://wage-proof.vercel.app
+
+## A1 submit (1 hour window)
+{"ok":true,"action":"submit","signer":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","txHash":"0xf72f574633de93a374813eee471d1f0304c3348588d37640ad1b42ebc7bb6b82","verifyUrl":"https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash%3D'0xf72f574633de93a374813eee471d1f0304c3348588d37640ad1b42ebc7bb6b82'","blockNumber":5248704,"receiptStatus":1,"id":4,"status":"Pending"}
+
+## A2 confirm #4 (employer signs)
+{"ok":true,"action":"confirm","signer":"0xBdC0C26d93153628c9340A2Bd1D586b90D020C03","txHash":"0x0dc3a1437d390ced7581ed124afaf345b3cb0e440a74b41b58555c92595a53fc","verifyUrl":"https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash%3D'0x0dc3a1437d390ced7581ed124afaf345b3cb0e440a74b41b58555c92595a53fc'","blockNumber":5248706,"receiptStatus":1,"id":4,"status":"Confirmed"}
+
+## A3 confirm #4 again (contract must reject: NotPending)
+{"ok":false,"code":"contract_rejected","action":"confirm","contractError":"NotPending","message":"合約拒絕：NotPending"}
+HTTP 409
+
+## B1 submit (30 second window)
+{"ok":true,"action":"submit","signer":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","txHash":"0x13d8cb79f9e8992b08b400a4ea7fef379d6db5273e40211cc38b55e45dfbb068","verifyUrl":"https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash%3D'0x13d8cb79f9e8992b08b400a4ea7fef379d6db5273e40211cc38b55e45dfbb068'","blockNumber":5248708,"receiptStatus":1,"id":5,"status":"Pending"}
+
+## B2 markExpired #5 immediately (contract must reject: DeadlineNotPassed)
+{"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"DeadlineNotPassed","message":"合約拒絕：DeadlineNotPassed"}
+HTTP 409
+
+waiting 70 s (also lets the per-minute quota reset) ...
+## B3 confirm #5 after deadline (contract must reject: DeadlinePassed)
+{"ok":false,"code":"contract_rejected","action":"confirm","contractError":"DeadlinePassed","message":"合約拒絕：DeadlinePassed"}
+HTTP 409
+
+## B4 markExpired #5
+{"ok":true,"action":"markExpired","signer":"0xde555310fc573E5E9C5b8928a1E13913d28BaCe4","txHash":"0xef97b73c40ab42be7119e64f5508b48284af051e4d8235178d3bc93a134a97e7","verifyUrl":"https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs?events=ethereum_tx.ethereumTxHash%3D'0xef97b73c40ab42be7119e64f5508b48284af051e4d8235178d3bc93a134a97e7'","blockNumber":5248724,"receiptStatus":1,"id":5,"status":"Expired"}
+
+## read back via relay: effectiveStatus(4), effectiveStatus(5)
+{"jsonrpc":"2.0","id":4,"result":"0x0000000000000000000000000000000000000000000000000000000000000002"}
+  (2=Confirmed 4=Expired)
+{"jsonrpc":"2.0","id":5,"result":"0x0000000000000000000000000000000000000000000000000000000000000004"}
+  (2=Confirmed 4=Expired)

@@ -1,0 +1,11 @@
+# Upload ONLY what the online demo needs. Everything else (especially .env, .env.demo) stays local.
+/*
+!api
+!web
+!demo
+!scripts
+!package.json
+!package-lock.json
+!vercel.json
+.env
+.env.*

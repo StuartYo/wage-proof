@@ -19,7 +19,7 @@ createServer(async (req, res) => {
   const url = new URL(req.url, "http://x").pathname;
   let rel = ROUTES[url];
   if (!rel) {
-    const p = normalize(url === "/" ? "/index.html" : url).replace(/^([/\\])+/, "");
+    const p = normalize(url === "/" ? "/local.html" : url).replace(/^([/\\])+/, "");
     if (p.includes("..")) { res.writeHead(400).end(); return; }
     rel = join("web", p);
   }

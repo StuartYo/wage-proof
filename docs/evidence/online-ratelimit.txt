@@ -1,0 +1,10 @@
+# rate limit: 8 write requests from one IP within a few seconds 2026-11-10T16:01:47Z
+# each is markExpired #4 (already Confirmed): the contract rejects it in simulation, so no transaction is sent, but each request counts as a write attempt
+req 1: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 2: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 3: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 4: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 5: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 6: {"ok":false,"code":"contract_rejected","action":"markExpired","contractError":"NotPending","message":"合約拒絕：NotPending"} HTTP 409
+req 7: {"ok":false,"code":"rate_limited","message":"同一來源每分鐘最多 6 次寫入，請 54 秒後再試（Rate limited）"} HTTP 429
+req 8: {"ok":false,"code":"rate_limited","message":"同一來源每分鐘最多 6 次寫入，請 53 秒後再試（Rate limited）"} HTTP 429

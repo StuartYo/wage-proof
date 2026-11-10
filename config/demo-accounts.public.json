@@ -1,0 +1,6 @@
+{
+  "_note": "Public addresses of the online-demo signer accounts (ME testnet only, test coins only). Keys live in .env.demo and in Vercel env vars, never in git.",
+  "worker": "0xde555310fc573E5E9C5b8928a1E13913d28BaCe4",
+  "employer": "0xBdC0C26d93153628c9340A2Bd1D586b90D020C03",
+  "createdAt": "2026-11-10T15:53:24.742Z"
+}

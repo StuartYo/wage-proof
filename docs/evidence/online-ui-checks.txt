@@ -1,0 +1,17 @@
+# online page checks, https://wage-proof.vercel.app/  (2026-11-11 00:0x Taiwan time, Chrome)
+# read-only checks done in the browser; write buttons were NOT clicked in the browser
+# (the workspace send-gate hook blocks clicking "Submit"-type buttons). The same writes were
+# exercised through the same /api/demo endpoint with curl: docs/evidence/online-demo-flows.txt
+
+page load: role "勞工 Worker" shows demo worker 0xde555310fc573E5E9C5b8928a1E13913d28BaCe4
+report 1 fingerprint computed in browser: 0x1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db (same as Node hash-report.mjs)
+records list read via /api/rpc: #5 Expired, #4 Confirmed, #3 Expired, #2 Disputed, #1 Confirmed, each with event tx hashes + Hub REST links
+
+390 px wide iframe of the same page (same origin):
+{ "innerWidth": 388, "scrollWidth": 373, "overflow": [], "recs": 5, "roles": 341 }
+(no element extends past the right edge; role switch fits)
+
+ME ID lookup from the page (direct to Hub REST):
+me1ru7x754 => 有 ME ID。節點回傳：狀態 DID_STATUS_ACTIVE，等級 KYC_LEVEL_ONE。
+me1lpvn9zx => 沒有 ME ID（No ME ID）。這個地址在 ME 測試網上查不到 ME ID。
+me1bad     => 請輸入 me1 開頭、共 41 個字元的地址。
