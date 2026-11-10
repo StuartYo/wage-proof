@@ -1,0 +1,1 @@
+8d53eb892afe15d56dbbca8d43cbf14fbdd6f2d7c8033f8e86b99430e77b92d3 *wage_proof_cw.wasm

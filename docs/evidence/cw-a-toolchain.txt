@@ -1,0 +1,15 @@
+# Stage A: Rust toolchain on E: (2026-11-10T16:32:44Z)
+RUSTUP_HOME=E:\tools\rust\rustup CARGO_HOME=E:\tools\rust\cargo
+$ rustc --version
+rustc 1.78.0 (9b00956e5 2024-04-29)
+$ cargo --version
+cargo 1.78.0 (54d8815d0 2024-03-26)
+$ rustup target list --installed
+wasm32-unknown-unknown
+x86_64-pc-windows-gnu
+$ rustup show active-toolchain
+1.78.0-x86_64-pc-windows-gnu (overridden by environment variable RUSTUP_TOOLCHAIN)
+$ du -sh E:\tools\rust
+697M	E:/tools/rust
+$ reg query HKCU\Environment /v Path (rust not added?)
+lines mentioning rust: 0

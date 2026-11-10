@@ -1,0 +1,27 @@
+# Stage B probe 2026-11-10T16:37:12.859Z  chain=mechain_400-1 rpc=https://beta-hub-26657.explorer-testnet.me
+sender me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc balance(umec) 99990000
+probe {"codeId":13,"contract":"me1l6z44fupg8l5mapmuxnrnmvxyclw5wnh5f5hfrtkaq5r0d9s24msh063dt","storeTx":"11BAEBE52BFCB06ECCAEC27F288881DF94EBD9E5D6352FAD688882BAC63D6294","storeFee":{"amount":[{"denom":"umec","amount":"169968"}],"gas":"8498399"},"instTx":"6B3DBA70FC31EE7773EB03952E98E0777B19B407EC4FC7F2A6196D9D5ACEE498","instFee":{"amount":[{"denom":"umec","amount":"10000"}],"gas":"361240"}}
+query me_id me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf (expect KYC_LEVEL_TWO) -> ERROR (raw): Query failed with (6): Generic error: ME ID lookup failed: system error: Unsupported query type: Stargate queries are disabled: query wasm contract failed: unknown request
+query me_id me1me24xy8u2ul9a8zm3y52rcfez0fght8ykq8x9v (expect KYC_LEVEL_ONE) -> ERROR (raw): Query failed with (6): Generic error: ME ID lookup failed: system error: Unsupported query type: Stargate queries are disabled: query wasm contract failed: unknown request
+query me_id me1mhyngg3dww60msw6dej4mkzheewjck86450e7g (expect no ME ID -> none) -> ERROR (raw): Query failed with (6): Generic error: ME ID lookup failed: system error: Unsupported query type: Stargate queries are disabled: query wasm contract failed: unknown request
+balance after(umec) 99810032
+verify: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1l6z44fupg8l5mapmuxnrnmvxyclw5wnh5f5hfrtkaq5r0d9s24msh063dt
+
+== Root cause check 2026-11-10T16:37:55Z
+testnet node_info application_version: me-hub v2.0.16-7-g99b3e42d, git_commit 99b3e42dbb86 (commit date 2026-09-02)
+whitelist added in me-hub commit 6ef90e3f3dfa (2026-11-06) 'feat: provide the wasm-vm with interface to access and query KYC and regions. (#1491)'
+GitHub compare 99b3e42...6ef90e3: status=ahead, ahead_by=5, behind_by=0  -> running node does NOT include the whitelist
+
+== Fix attempt 1: same query via the REST smart-query path (different gateway)
+{"code":2,"message":"codespace wasm code 9: query wasm contract failed: Generic error: ME ID lookup failed: system error: Unsupported query type: Stargate queries are disabled","details":[]}
+
+== Fix attempt 2: other public node (EVM host 118.175.0.249) — does any node run a newer binary?
+-- http://118.175.0.249:1317/cosmos/base/tendermint/v1beta1/node_info
+"version":"0.37.5"
+"version":"v2.0.16-7-g99b3e42d"
+"git_commit":"99b3e42dbb86d851af2281b55e5ea293a7def9c1"
+-- http://118.175.0.249:26657/abci_info
+"version":"v2.0.16-7-g99b3e42d"
+-- 118.175.0.249:1317 smart query
+{"code":2,"message":"codespace wasm code 9: query wasm contract failed: Generic error: ME ID lookup failed: system error: Unsupported query type: Stargate queries are disabled","details":[]}
+

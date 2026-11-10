@@ -1,0 +1,26 @@
+{
+  "probe": {
+    "codeId": 13,
+    "contract": "me1l6z44fupg8l5mapmuxnrnmvxyclw5wnh5f5hfrtkaq5r0d9s24msh063dt",
+    "storeTx": "11BAEBE52BFCB06ECCAEC27F288881DF94EBD9E5D6352FAD688882BAC63D6294",
+    "storeFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "169968"
+        }
+      ],
+      "gas": "8498399"
+    },
+    "instTx": "6B3DBA70FC31EE7773EB03952E98E0777B19B407EC4FC7F2A6196D9D5ACEE498",
+    "instFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "10000"
+        }
+      ],
+      "gas": "361240"
+    }
+  }
+}

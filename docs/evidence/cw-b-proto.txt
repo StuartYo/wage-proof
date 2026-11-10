@@ -1,0 +1,62 @@
+# Stage B prep: ME ID query wire format, checked against openmetaearth/me-hub main (2026-11-10T16:34:11Z)
+== app/keepers/wasm_me_query.go (Stargate whitelist)
+rtk: Failed to resolve 'rg' via PATH, falling back to direct exec: Binary 'rg' not found on PATH
+2 matches in 2 files:
+
+25:0:&didtypes.QueryDidResponse{},
+wasm_me_query.go:27:return wasmkeeper.AcceptListStargateQuerier(acceptedQueries, queryRouter, app...
+== app/keepers/keepers.go (plugin wired + capabilities)
+rtk: Failed to resolve 'rg' via PATH, falling back to direct exec: Binary 'rg' not found on PATH
+2 matches in 2 files:
+
+414:0:= strings.Join(wasmapp.AllCapabilities(), ",")
+keepers.go:409:setupStargateQueryPlugin(appCodec, bApp.GRPCQueryRouter()),
+== proto/metaearth/did/query.proto
+rtk: Failed to resolve 'rg' via PATH, falling back to direct exec: Binary 'rg' not found on PATH
+1 matches in 1 files:
+
+query.proto:17:rpc Did(QueryDid) returns (QueryDidResponse) {
+message QueryDid {
+  string address = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+message QueryDidResponse {
+  did.DidInfo info = 1 [(gogoproto.nullable) = false];
+}
+== proto/metaearth/did/did.proto
+enum KycLevel {
+
+  KYC_LEVEL_NONE = 0 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_NONE "];
+  KYC_LEVEL_ONE = 1 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_ONE "];
+  KYC_LEVEL_TWO = 2 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_TWO"];
+  KYC_LEVEL_THREE = 3 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_THREE"];
+  KYC_LEVEL_FOUR = 4 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_FOUR"];
+  KYC_LEVEL_FIVE = 5 [(gogoproto.enumvalue_customname) = "KYC_LEVEL_FIVE"];
+}
+
+// did status enum
+enum DidStatus {
+
+  DID_STATUS_INACTIVE = 0 [(gogoproto.enumvalue_customname) = "DID_STATUS_INACTIVE "];
+  DID_STATUS_ACTIVE = 1 [(gogoproto.enumvalue_customname) = "DID_STATUS_ACTIVE"];
+}
+
+message DidInfo {
+  // same as the MEID
+  string did = 1; // MEIDNFT.umeid
+  string address = 2 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  // public_key is mapped to the user address
+  // the issuer will use public_key to encrypt the user's certificate to ensure
+  // the privacy of the off-chain certificate
+  string pubkey = 3;
+  DidStatus status = 4;
+  string regionId = 5; // unused!
+  KycLevel kycLevel = 6;
+  string sub_account = 7;
+}
+== code upload params (REST)
+{"params":{"code_upload_access":{"permission":"Everybody","addresses":[]},"instantiate_default_permission":"Everybody"}}
+
+== node_info versions
+"path":"github.com/CosmWasm/wasmd","version":"v0.43.0"
+"path":"github.com/CosmWasm/wasmvm","version":"v1.4.1"

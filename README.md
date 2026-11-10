@@ -38,7 +38,12 @@
 | 線上示範 https://wage-proof.vercel.app/ | 上線；讀鏈走唯讀中繼、寫鏈由伺服器用示範帳號代簽 |
 | 本機示範頁（`web/local.html`） | 只連本機模擬鏈 |
 
-細節與證據：`docs/day1.md`、`docs/day2-online-demo.md`、`docs/day3-meid.md`。
+### 兩個合約，各自的角色
+
+- **Solidity 版**（`contracts/WageProof.sol`，ME 測試網 EVM）：線上示範用的就是它。確認／異議／逾期由合約把關；「雇主要有 ME ID」由伺服器先查，查過才送交易。
+- **CosmWasm 探路合約**（`cw/wage-proof-cw/`，ME 測試網 code id 13）：讓合約自己查 ME ID，不必經過伺服器。上傳、建立都成功，但目前的測試網節點還沒開放這個查詢，所以還沒接上示範。詳見 `docs/day4-cosmwasm.md`。
+
+細節與證據：`docs/day1.md`、`docs/day2-online-demo.md`、`docs/day3-meid.md`、`docs/day4-cosmwasm.md`。
 
 ## 啟動步驟
 

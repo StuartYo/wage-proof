@@ -1,0 +1,89 @@
+   Compiling version_check v0.9.5
+   Compiling zeroize v1.8.1
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling typenum v1.20.1
+   Compiling unicode-ident v1.0.27
+   Compiling cfg-if v1.0.5
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling syn v1.0.109
+   Compiling once_cell v1.21.4
+   Compiling base16ct v0.2.0
+   Compiling cpufeatures v0.2.17
+   Compiling zmij v1.0.23
+   Compiling getrandom v0.2.17
+   Compiling der v0.7.10
+   Compiling thiserror v1.0.69
+   Compiling serde_json v1.0.154
+   Compiling byteorder v1.5.0
+   Compiling rand_core v0.6.4
+   Compiling itoa v1.0.19
+   Compiling rand_core v0.5.1
+   Compiling schemars v0.8.22
+   Compiling generic-array v0.14.9
+   Compiling ahash v0.7.8
+   Compiling ff v0.13.1
+   Compiling memchr v2.8.3
+   Compiling opaque-debug v0.3.1
+   Compiling group v0.13.0
+   Compiling dyn-clone v1.0.20
+   Compiling hex v0.4.3
+   Compiling static_assertions v1.1.0
+   Compiling bech32 v0.9.1
+   Compiling forward_ref v1.0.0
+   Compiling base64 v0.21.7
+   Compiling spki v0.7.3
+   Compiling bnum v0.10.0
+   Compiling pkcs8 v0.10.2
+   Compiling hashbrown v0.12.3
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.6
+   Compiling crypto-bigint v0.5.5
+   Compiling digest v0.9.0
+   Compiling sec1 v0.7.3
+   Compiling block-buffer v0.9.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.10
+   Compiling digest v0.10.7
+   Compiling curve25519-dalek v3.2.0
+   Compiling sha2 v0.9.9
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling sha2 v0.10.9
+   Compiling rfc6979 v0.4.0
+   Compiling serde_derive_internals v0.29.1
+   Compiling serde_derive v1.0.229
+   Compiling elliptic-curve v0.13.8
+   Compiling thiserror-impl v1.0.69
+   Compiling schemars_derive v0.8.22
+   Compiling ecdsa v0.16.9
+   Compiling k256 v0.13.4
+   Compiling derivative v2.2.0
+   Compiling cosmwasm-derive v1.5.11
+   Compiling cosmwasm-schema-derive v1.5.11
+   Compiling ed25519-zebra v3.1.0
+   Compiling serde-json-wasm v0.5.2
+   Compiling cosmwasm-crypto v1.5.11
+   Compiling cosmwasm-std v1.5.11
+   Compiling cosmwasm-schema v1.5.11
+   Compiling wage-proof-cw v0.1.0 (E:\projects\wage-proof\cw\wage-proof-cw)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 27.19s
+     Running unittests src\lib.rs (target\debug\deps\wage_proof_cw-5ea4824458379953.exe)
+
+running 4 tests
+test meid::tests::encodes_query_did ... ok
+test meid::tests::parses_proto_json ... ok
+test meid::tests::parses_raw_protobuf_and_inactive_is_none ... ok
+test meid::tests::only_did_not_found_means_none ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests wage-proof-cw
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

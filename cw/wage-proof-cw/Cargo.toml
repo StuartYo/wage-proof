@@ -1,0 +1,17 @@
+[package]
+name = "wage-proof-cw"
+version = "0.1.0"
+edition = "2021"
+description = "Probe: can a CosmWasm contract on ME Hub read the ME ID (DID) module via Stargate query?"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+serde = { workspace = true }
+
+[features]
+library = []

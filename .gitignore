@@ -12,3 +12,7 @@ deployments/localhost.json
 public/
 
 .vercel
+
+# CosmWasm build output
+cw/target/
+cw/artifacts/*.wasm
