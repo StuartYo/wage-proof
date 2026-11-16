@@ -1,0 +1,43 @@
+# cargo test --locked (wage-proof-cw v0.3 settlement) 2026-11-16T15:25:34Z
+rustc 1.78.0 (9b00956e5 2024-04-29)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running unittests src\lib.rs (target\debug\deps\wage_proof_cw-0e04818ca185b879.exe)
+
+running 28 tests
+test meid::tests::encodes_query_did ... ok
+test meid::tests::only_did_not_found_means_none ... ok
+test meid::tests::parses_raw_protobuf_and_inactive_is_none ... ok
+test tests::m02_employer_lookup_upstream_failure_is_rejected_not_verified ... ok
+test meid::tests::parses_proto_json ... ok
+test tests::m01_employer_without_me_id_is_rejected_with_level ... ok
+test tests::m03_worker_lookup_upstream_failure_is_rejected ... ok
+test tests::m05_min_level_two_rejects_level_one_and_none_is_not_allowed_as_min ... ok
+test tests::m06_me_id_query_reports_all_four_cases ... ok
+test tests::m08_storage_holds_no_personal_data_fields ... ok
+test tests::m04_levels_are_stored_in_record_and_events ... ok
+test tests::p01_confirm_with_exact_claim_sends_it_to_the_worker_and_records_settled ... ok
+test tests::p04_claim_zero_confirm_must_not_carry_coins ... ok
+test tests::p05_dispute_submit_and_mark_expired_refuse_coins ... ok
+test tests::p03_wrong_denom_or_extra_coin_is_rejected ... ok
+test tests::p06_payment_rules_do_not_bypass_who_and_when ... ok
+test tests::s01_submit_stores_hash_parties_deadline_and_emits_event ... ok
+test tests::p02_underpay_overpay_and_no_payment_are_rejected_and_nothing_changes ... ok
+test tests::s02_submit_rejects_bad_hash_bad_employer_window_out_of_range ... ok
+test tests::s03_employer_confirms_within_deadline ... ok
+test tests::s04_employer_disputes_with_reason_hash ... ok
+test tests::s05_only_the_named_employer_may_confirm_or_dispute ... ok
+test tests::s08_response_exactly_at_the_deadline_second_is_accepted ... ok
+test tests::s09_unknown_ids_are_rejected ... ok
+test tests::s06_a_record_cannot_be_handled_twice ... ok
+test tests::s07_after_deadline_no_response_and_anyone_marks_expired ... ok
+test tests::s10_same_report_submitted_again_and_both_ids_listed ... ok
+test tests::m07_list_is_newest_first_paged_and_capped_at_30 ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests wage-proof-cw
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

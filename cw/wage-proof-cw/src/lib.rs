@@ -5,8 +5,13 @@
 //! query) and rejects the record when the level is below the configured minimum. The levels of
 //! both parties at submit time are stored in the record.
 //!
-//! Only fingerprints (64-char hex hashes), addresses, times, statuses and ME ID levels are stored.
-//! No personal data.
+//! Settlement (v0.3): the worker may state a claim (an amount of the chain's native coin, in
+//! base units). When the employer confirms such a record, the same transaction must carry exactly
+//! that amount; the contract forwards it to the worker with a BankMsg::Send and stores it as
+//! `settled`. Every other action refuses attached funds, so no coins can get stuck in the contract.
+//!
+//! Only fingerprints (64-char hex hashes), addresses, times, statuses, ME ID levels and amounts are
+//! stored. No personal data.
 
 pub mod meid;
 mod state;
@@ -15,8 +20,8 @@ mod tests;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult,
+    coins, entry_point, to_json_binary, Addr, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
 };
 
 pub use meid::{Level, MeIdInfo};
@@ -28,16 +33,22 @@ pub const MIN_WINDOW: u64 = 30;
 pub const MAX_WINDOW: u64 = 90 * 24 * 3600;
 pub const DEFAULT_LIST_LIMIT: u32 = 10;
 pub const MAX_LIST_LIMIT: u32 = 30;
+/// native coin of ME Hub testnet (bank denom of MEC); can be overridden at instantiate
+pub const DEFAULT_SETTLE_DENOM: &str = "umec";
 
 #[cw_serde]
 pub struct InstantiateMsg {
     /// lowest employer ME ID level accepted by `submit` (`one` or `two`; default `one`)
     pub min_employer_level: Option<Level>,
+    /// denom the employer must pay a claim in (default `umec`)
+    pub settle_denom: Option<String>,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Submit { report_hash: String, employer: String, deadline_seconds: u64 },
+    /// `claim`: amount (in `settle_denom` base units) the worker asks the employer to pay back;
+    /// missing or 0 = no amount claimed (v0.2 behaviour)
+    Submit { report_hash: String, employer: String, deadline_seconds: u64, claim: Option<Uint128> },
     Confirm { id: u64 },
     Dispute { id: u64, reason_hash: String },
     MarkExpired { id: u64 },
@@ -84,26 +95,65 @@ pub fn instantiate(deps: DepsMut, _env: Env, _info: MessageInfo, msg: Instantiat
     if min == Level::None {
         return Err(err("BadConfig", "min_employer_level must be one or two"));
     }
-    save_config(deps.storage, &Config { min_employer_level: min })?;
+    let denom = msg.settle_denom.unwrap_or_else(|| DEFAULT_SETTLE_DENOM.to_string());
+    if denom.is_empty() {
+        return Err(err("BadConfig", "settle_denom must not be empty"));
+    }
+    save_config(deps.storage, &Config { min_employer_level: min, settle_denom: denom.clone() })?;
     save_count(deps.storage, 0)?;
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("min_employer_level", min.as_str()))
+        .add_attribute("min_employer_level", min.as_str())
+        .add_attribute("settle_denom", denom))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let now = env.block.time.seconds();
     match msg {
-        ExecuteMsg::Submit { report_hash, employer, deadline_seconds } => {
-            submit(deps, now, info.sender, report_hash, employer, deadline_seconds)
+        ExecuteMsg::Submit { report_hash, employer, deadline_seconds, claim } => {
+            no_funds(&info, "submit")?;
+            submit(deps, now, info.sender, report_hash, employer, deadline_seconds, claim.unwrap_or_default())
         }
-        ExecuteMsg::Confirm { id } => respond(deps, now, info.sender, id, None),
+        ExecuteMsg::Confirm { id } => respond(deps, now, info, id, None),
         ExecuteMsg::Dispute { id, reason_hash } => {
+            no_funds(&info, "dispute")?;
             let reason = normalize_hash("reason_hash", &reason_hash)?;
-            respond(deps, now, info.sender, id, Some(reason))
+            respond(deps, now, info, id, Some(reason))
         }
-        ExecuteMsg::MarkExpired { id } => mark_expired(deps, now, info.sender, id),
+        ExecuteMsg::MarkExpired { id } => {
+            no_funds(&info, "mark_expired")?;
+            mark_expired(deps, now, info.sender, id)
+        }
+    }
+}
+
+/// Only a confirm with a claim may carry coins; anything else would be stuck in the contract.
+fn no_funds(info: &MessageInfo, action: &str) -> StdResult<()> {
+    if info.funds.is_empty() {
+        return Ok(());
+    }
+    let sent: Vec<String> = info.funds.iter().map(|c| c.to_string()).collect();
+    Err(err("UnexpectedFunds", format!("{action} must not carry coins (sent {})", sent.join(","))))
+}
+
+/// A confirm must carry exactly `claim` of `denom` as a single coin.
+fn check_settlement(info: &MessageInfo, claim: Uint128, denom: &str) -> StdResult<()> {
+    if claim.is_zero() {
+        return no_funds(info, "confirm without a claim");
+    }
+    match info.funds.as_slice() {
+        [] => Err(err("SettlementMissing", format!("confirm must carry {claim}{denom} for the worker"))),
+        [c] if c.denom != denom => Err(err("WrongSettlementDenom", format!("sent {c}, claim is in {denom}"))),
+        [c] if c.amount != claim => Err(err(
+            "WrongSettlement",
+            format!("sent {}{denom}, claim is exactly {claim}{denom}", c.amount),
+        )),
+        [_] => Ok(()),
+        many => Err(err(
+            "WrongSettlementDenom",
+            format!("sent {} coins, expected only {claim}{denom}", many.len()),
+        )),
     }
 }
 
@@ -125,6 +175,7 @@ fn submit(
     report_hash: String,
     employer: String,
     window: u64,
+    claim: Uint128,
 ) -> StdResult<Response> {
     let report_hash = normalize_hash("report_hash", &report_hash)?;
     let employer = deps
@@ -168,6 +219,8 @@ fn submit(
         status: Status::Pending,
         employer_level: emp.level,
         worker_level: wrk.level,
+        claim,
+        settled: Uint128::zero(),
     };
     save_record(deps.storage, &rec)?;
     save_count(deps.storage, id)?;
@@ -181,14 +234,16 @@ fn submit(
         .add_attribute("report_hash", report_hash)
         .add_attribute("deadline", rec.deadline.to_string())
         .add_attribute("employer_level", emp.level.as_str())
-        .add_attribute("worker_level", wrk.level.as_str()))
+        .add_attribute("worker_level", wrk.level.as_str())
+        .add_attribute("claim", claim.to_string()))
 }
 
 fn existing(deps: Deps, id: u64) -> StdResult<Record> {
     load_record(deps.storage, id)?.ok_or_else(|| err("NoSuchRecord", format!("id {id}")))
 }
 
-fn respond(deps: DepsMut, now: u64, sender: Addr, id: u64, reason: Option<String>) -> StdResult<Response> {
+fn respond(deps: DepsMut, now: u64, info: MessageInfo, id: u64, reason: Option<String>) -> StdResult<Response> {
+    let sender = info.sender.clone();
     let mut r = existing(deps.as_ref(), id)?;
     if sender != r.employer {
         return Err(err("NotEmployer", format!("caller {sender} is not employer {}", r.employer)));
@@ -200,18 +255,32 @@ fn respond(deps: DepsMut, now: u64, sender: Addr, id: u64, reason: Option<String
         return Err(err("DeadlinePassed", format!("deadline {} < now {now}", r.deadline)));
     }
     let action = if reason.is_some() { "dispute" } else { "confirm" };
+    let mut res = Response::new();
+    if reason.is_none() {
+        let denom = load_config(deps.storage)?.settle_denom;
+        check_settlement(&info, r.claim, &denom)?;
+        if !r.claim.is_zero() {
+            r.settled = r.claim;
+            res = res.add_message(BankMsg::Send {
+                to_address: r.worker.to_string(),
+                amount: coins(r.claim.u128(), denom),
+            });
+        }
+    }
     r.status = if reason.is_some() { Status::Disputed } else { Status::Confirmed };
     r.reason_hash = reason.clone();
     r.closed_at = Some(now);
     r.closed_by = Some(sender);
     save_record(deps.storage, &r)?;
-    let mut res = Response::new()
+    res = res
         .add_attribute("action", action)
         .add_attribute("id", id.to_string())
         .add_attribute("worker", r.worker.as_str())
         .add_attribute("employer", r.employer.as_str())
         .add_attribute("employer_level", r.employer_level.as_str())
         .add_attribute("worker_level", r.worker_level.as_str())
+        .add_attribute("claim", r.claim.to_string())
+        .add_attribute("settled", r.settled.to_string())
         .add_attribute("at", now.to_string());
     if let Some(h) = reason {
         res = res.add_attribute("reason_hash", h);
@@ -240,6 +309,8 @@ fn mark_expired(deps: DepsMut, now: u64, sender: Addr, id: u64) -> StdResult<Res
         .add_attribute("employer", r.employer.as_str())
         .add_attribute("employer_level", r.employer_level.as_str())
         .add_attribute("worker_level", r.worker_level.as_str())
+        .add_attribute("claim", r.claim.to_string())
+        .add_attribute("settled", r.settled.to_string())
         .add_attribute("at", now.to_string()))
 }
 

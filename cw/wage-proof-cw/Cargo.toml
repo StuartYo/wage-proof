@@ -1,6 +1,6 @@
 [package]
 name = "wage-proof-cw"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "WageProof on ME Hub: confirm-or-dispute registry for wage evidence fingerprints; the contract reads the employer ME ID itself."
 license = "MIT"

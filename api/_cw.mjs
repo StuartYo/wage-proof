@@ -18,12 +18,19 @@ export const CW = Object.freeze({
   minGasPrice: "0.02umec",
   minFeeUmec: "10000",
   hdPath: "m/44'/118'/0'/0/0",
-  contract: "me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc",
-  codeId: 21,
-  storeTx: "1C88EAA9F07382306932D791AB71515CBE3274BBF354B61D656BF12F75692896",
-  instTx: "4231B5DC06DDF3C648B0ABCE811CDD41BBB2BAE44EA9A6CE6589F6A4169B7AB3",
-  // on-chain proof that the contract itself refused an employer without ME ID (2026-11-16)
-  rejectProofTx: "95F15D92C809E1DFD1D426488A263880FBE4293E407041B1B9B073D3B6A9939E",
+  // v0.3 (day 6): confirm with a claim settles in MEC in the same transaction (docs/day6-mec-settlement.md)
+  contract: "me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg",
+  codeId: 22,
+  storeTx: "31ACCEEDF21976E082B57A6A77B9DACF82F9CCBE707572ABD79837B8683DFB88",
+  instTx: "CD9DE85B577CDFDE9A67F40384B4AA0EE0F1AA8D4D1A2A6B07EA4278A7216B78",
+  // on-chain proof that the v0.3 contract itself refused an employer without ME ID (2026-11-16)
+  rejectProofTx: "7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF",
+  // demo conversion, NOT a real exchange rate: NT$1 = 1,000 umec (1 MEC = 10^8 umec), NT$523 = 0.00523 MEC
+  umecPerTwd: 1000,
+  mecDecimals: 8,
+  // v0.2 contract (code 21): 18 records without settlement, kept as is (nobody can migrate it)
+  legacyContract: "me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc",
+  legacyCodeId: 21,
 });
 
 export const txUrl = (hash) => `${CW.rest}/cosmos/tx/v1beta1/txs/${hash}`;

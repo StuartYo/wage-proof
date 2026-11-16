@@ -1,0 +1,119 @@
+# WageProof CosmWasm v0.3 settlement e2e 2026-11-16T15:28:02.370Z
+chain=mechain_400-1 contract=me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg codeId=22 (old contract me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc untouched)
+accounts: worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf (old demo employer, EVM key, ethsecp256k1) main=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc
+report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db (sha256 of demo/synthetic-report.json, synthetic data)
+demo conversion (NOT a real exchange rate): NT$1 = 1000 umec; NT$523 -> claim 523000 umec = 0.00523 MEC (1 MEC = 10^8 umec)
+query config: {"min_employer_level":"one","settle_denom":"umec"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJjb25maWciOnt9fQ%3D%3D
+query me_id employer: {"address":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","level":"two","kyc_level":"KYC_LEVEL_TWO","status":"DID_STATUS_ACTIVE","did":"2611108677483","source":"found","raw_error":""}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxaGhxdnltdm56NW16M2pmNXBnNGFyNHZ4aHl4c3lycXI3dGd3eWYifX0%3D
+
+## (0) employer balance
+employer balance 19819997 umec
+top-up: main -> employer 20000000 umec (test coins only) hash=A000D25B9ADC8BE6496F685CBE61C6479D55C640AE0AD99BC553B83589511819 REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/A000D25B9ADC8BE6496F685CBE61C6479D55C640AE0AD99BC553B83589511819
+employer balance now 39819997 umec
+
+## (1) worker submits with a claim
+TX (1) worker submit claim=523000: OK hash=7ED3FD8C88B9C124B334B5ACD3515491B40BBCADB90F532023A691A12B151D33 height=5353705 fee=10000umec funds=[]
+  wasm event: action=submit id=1 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db deadline=1794846485 employer_level=two worker_level=none claim=523000
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1nphkqay2jhk6q88k7q4u57ex35298dkpggkzpd","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/7ED3FD8C88B9C124B334B5ACD3515491B40BBCADB90F532023A691A12B151D33
+  PASS: submit event claim=523000
+TX (1b) worker submit with coins attached: funds=[{"denom":"umec","amount":"1"}] expect "UnexpectedFunds"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: UnexpectedFunds: submit must not carry coins (sent 1umec): execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '265153' : unknown request
+  on-chain: code=5 hash=8128F66C950935F9BF6C8C6EF2782948AE0C4EA1F6A22D2E6BEE5BFFD82884F9 height=5353706 gasUsed=200685/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: UnexpectedFunds: submit must not carry coins (sent 1umec): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/8128F66C950935F9BF6C8C6EF2782948AE0C4EA1F6A22D2E6BEE5BFFD82884F9
+  PASS: (1b) worker submit with coins attached rejected with UnexpectedFunds
+
+## (2) employer underpays / pays nothing / wrong amount -> rejected, nothing moves
+TX (2a) employer confirms #1 paying 522999: funds=[{"denom":"umec","amount":"522999"}] expect "WrongSettlement:"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: WrongSettlement: sent 522999umec, claim is exactly 523000umec: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '269656' 
+  on-chain: code=5 hash=94C8585CE22D4AEF908337D786975416C771D6A4627B79E373E2A4C39D43096F height=5353707 gasUsed=211787/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: WrongSettlement: sent 522999umec, claim is exactly 523000umec: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/94C8585CE22D4AEF908337D786975416C771D6A4627B79E373E2A4C39D43096F
+  PASS: (2a) employer confirms #1 paying 522999 rejected with WrongSettlement:
+TX (2b) employer confirms #1 paying 523001: funds=[{"denom":"umec","amount":"523001"}] expect "WrongSettlement:"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: WrongSettlement: sent 523001umec, claim is exactly 523000umec: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '269656' 
+  on-chain: code=5 hash=135DBA4B8F9938B9C9D3D6BED40EE72D5E00CFB530998C30149F60468902D3EB height=5353708 gasUsed=211787/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: WrongSettlement: sent 523001umec, claim is exactly 523000umec: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/135DBA4B8F9938B9C9D3D6BED40EE72D5E00CFB530998C30149F60468902D3EB
+  PASS: (2b) employer confirms #1 paying 523001 rejected with WrongSettlement:
+TX (2c) employer confirms #1 without paying: funds=[] expect "SettlementMissing"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: SettlementMissing: confirm must carry 523000umec for the worker: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '249725' 
+  on-chain: code=5 hash=91E19D722015A631C87B2811D232F2D2924DBA48BE27B362A039C05647DBCDE5 height=5353709 gasUsed=191856/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: SettlementMissing: confirm must carry 523000umec for the worker: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/91E19D722015A631C87B2811D232F2D2924DBA48BE27B362A039C05647DBCDE5
+  PASS: (2c) employer confirms #1 without paying rejected with SettlementMissing
+query record 1 after rejections: {"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794842885,"deadline":1794846485,"closed_at":null,"closed_by":null,"status":"pending","employer_level":"two","worker_level":"none","claim":"523000","settled":"0"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJyZWNvcmQiOnsiaWQiOjF9fQ%3D%3D
+  PASS: record 1 still pending, settled=0
+
+## (3) employer confirms paying exactly the claim -> worker receives exactly the claim
+before: worker=59700000 employer=39789997 contract=0
+TX (3) employer confirms #1 paying 523000: OK hash=D708AC6AFFF03E5B965181AF723B8732E0C7861AB49AAE1B6B4F4E300CCBA557 height=5353710 fee=10000umec funds=[{"denom":"umec","amount":"523000"}]
+  wasm event: action=confirm id=1 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none claim=523000 settled=523000 at=1794842910
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1lfy56w69s7dh9usy0tug863t452l0tjg8v6cnn","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"},{"recipient":"me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg","sender":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","amount":"523000umec"},{"recipient":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","sender":"me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg","amount":"523000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/D708AC6AFFF03E5B965181AF723B8732E0C7861AB49AAE1B6B4F4E300CCBA557
+after:  worker=60223000 employer=39256997 contract=0
+  PASS: worker +523000 umec (claim 523000)
+  PASS: employer -533000 umec = claim 523000 + fee 10000
+  PASS: contract keeps nothing (balance 0)
+  PASS: confirm event settled=523000
+query record 1: {"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794842885,"deadline":1794846485,"closed_at":1794842910,"closed_by":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","status":"confirmed","employer_level":"two","worker_level":"none","claim":"523000","settled":"523000"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJyZWNvcmQiOnsiaWQiOjF9fQ%3D%3D
+  PASS: record 1 confirmed, claim=523000 settled=523000
+TX (3b) employer confirms #1 again paying 523000: funds=[{"denom":"umec","amount":"523000"}] expect "NotPending"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: NotPending: record 1 is confirmed: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '268511' 
+  on-chain: code=5 hash=FB8D98AD08A5AFDDAABB4A0749CF077675EA9D3F871590AD1CEAACCCB32B88BE height=5353711 gasUsed=210642/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotPending: record 1 is confirmed: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/FB8D98AD08A5AFDDAABB4A0749CF077675EA9D3F871590AD1CEAACCCB32B88BE
+  PASS: (3b) employer confirms #1 again paying 523000 rejected with NotPending
+
+## (4) dispute: coins refused; without coins nothing is paid
+TX (4) worker submit claim=523000: OK hash=A3FE4F21A29127B3FE89455FEA2AC649D9B5F78A087C06EB03DCF6FBD8F525FD height=5353712 fee=10000umec funds=[]
+  wasm event: action=submit id=2 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db deadline=1794846520 employer_level=two worker_level=none claim=523000
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1nphkqay2jhk6q88k7q4u57ex35298dkpggkzpd","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/A3FE4F21A29127B3FE89455FEA2AC649D9B5F78A087C06EB03DCF6FBD8F525FD
+TX (4a) employer disputes #2 with 523000 attached: funds=[{"denom":"umec","amount":"523000"}] expect "UnexpectedFunds"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: UnexpectedFunds: dispute must not carry coins (sent 523000umec): execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '274121' 
+  on-chain: code=5 hash=999780C131E99BB4B42762EB32F3F04C86E5B491E7CBE28AE9931C2F597905D3 height=5353713 gasUsed=216252/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: UnexpectedFunds: dispute must not carry coins (sent 523000umec): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/999780C131E99BB4B42762EB32F3F04C86E5B491E7CBE28AE9931C2F597905D3
+  PASS: (4a) employer disputes #2 with 523000 attached rejected with UnexpectedFunds
+TX (4b) employer disputes #2: OK hash=AA44227E511C9AC3ED43B3C584B570DC5B6B5B94DDAF60AFEAC429DF752B47C1 height=5353714 fee=10000umec funds=[]
+  wasm event: action=dispute id=2 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none claim=523000 settled=0 at=1794842930 reason_hash=9f8f034fa9bd2e21fb47262ea86e582c867dec658bd245f45318fb2bba3d4e37
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1lfy56w69s7dh9usy0tug863t452l0tjg8v6cnn","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/AA44227E511C9AC3ED43B3C584B570DC5B6B5B94DDAF60AFEAC429DF752B47C1
+  PASS: dispute settled=0, worker balance unchanged
+query record 2: {"id":2,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":"9f8f034fa9bd2e21fb47262ea86e582c867dec658bd245f45318fb2bba3d4e37","submitted_at":1794842920,"deadline":1794846520,"closed_at":1794842930,"closed_by":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","status":"disputed","employer_level":"two","worker_level":"none","claim":"523000","settled":"0"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJyZWNvcmQiOnsiaWQiOjJ9fQ%3D%3D
+  PASS: record 2 disputed, settled=0
+
+## (5) claim 0 = v0.2 behaviour: confirm must not carry coins
+TX (5) worker submit without claim: OK hash=F79934C162B8D0D55CB0F377CC2E853F8CE7E76801CBCB851336FD395AAE003D height=5353715 fee=10000umec funds=[]
+  wasm event: action=submit id=3 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db deadline=1794846534 employer_level=two worker_level=none claim=0
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1lfy56w69s7dh9usy0tug863t452l0tjg8v6cnn","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/F79934C162B8D0D55CB0F377CC2E853F8CE7E76801CBCB851336FD395AAE003D
+TX (5a) employer confirms #3 with 1 umec attached: funds=[{"denom":"umec","amount":"1"}] expect "UnexpectedFunds"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: UnexpectedFunds: confirm without a claim must not carry coins (sent 1umec): execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '269004' 
+  on-chain: code=5 hash=34A6280C6E5A7BE5109C5BE884DF8DDA65F8DE823308EFD06175C3183F55560B height=5353716 gasUsed=211135/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: UnexpectedFunds: confirm without a claim must not carry coins (sent 1umec): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/34A6280C6E5A7BE5109C5BE884DF8DDA65F8DE823308EFD06175C3183F55560B
+  PASS: (5a) employer confirms #3 with 1 umec attached rejected with UnexpectedFunds
+TX (5b) employer confirms #3 without coins: OK hash=B9D507276BC6B38B3F41954602ADC688954997F277C89B2F4F2FBB961F630ECC height=5353717 fee=10000umec funds=[]
+  wasm event: action=confirm id=3 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none claim=0 settled=0 at=1794842944
+  transfer events: [{"recipient":"me1hgefcc0n0gfzv7nh8k8tw4s87j8vy3ggjgth9n","amount":"1000umec"},{"recipient":"me1lfy56w69s7dh9usy0tug863t452l0tjg8v6cnn","amount":"2000umec"},{"recipient":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","amount":"4000umec"},{"recipient":"me1jrkxf9xjuzrudcywl0kwxp5q5qxy43yejrddke","amount":"3000umec"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/B9D507276BC6B38B3F41954602ADC688954997F277C89B2F4F2FBB961F630ECC
+  PASS: confirm claim=0 settled=0
+query count: 3
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg/smart/eyJjb3VudCI6e319
+final balances: worker=60203000 employer=39206997 contract=0 main=9513700
+
+result: 17 PASS, 0 UNEXPECTED
+
+## (6) 2026-11-16T15:29:55.345Z employer without ME ID -> contract refuses (v0.3 contract me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg)
+TX (6) worker submit claim=523000 employer=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g: code=5 hash=7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF height=5353726
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below required one (source not_found): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF
+  PASS: rejected with EmployerNotVerified, count 3 -> 3

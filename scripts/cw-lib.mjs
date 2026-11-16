@@ -56,8 +56,8 @@ export const storeMsg = (sender, wasm) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgStor
   value: { sender, wasmByteCode: gzipSync(wasm, { level: 9 }) } });
 export const instMsg = (sender, codeId, msg, label) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgInstantiateContract",
   value: { sender, codeId: BigInt(codeId), label, msg: toUtf8(JSON.stringify(msg)), funds: [], admin: "" } });
-export const execMsg = (sender, contract, msg) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
-  value: { sender, contract, msg: toUtf8(JSON.stringify(msg)), funds: [] } });
+export const execMsg = (sender, contract, msg, funds = []) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+  value: { sender, contract, msg: toUtf8(JSON.stringify(msg)), funds } });
 
 export async function upload(client, from, file, label, initMsg = {}) {
   const wasm = readFileSync(file);

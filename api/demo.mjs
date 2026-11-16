@@ -4,6 +4,9 @@
 // whether the employer holds an ME ID) is decided ONLY by the contract: we simulate the call on the chain
 // node, and if the contract rejects it we return the contract's error name without sending.
 // The ME ID rule lives inside the contract (it queries the ME ID module itself), not on this server.
+// Settlement (contract v0.3): submit carries the worker's claim (NT$ turned into umec with the demo conversion
+// CW.umecPerTwd, NOT a real exchange rate); confirm attaches exactly the claim stored in the record, and the
+// contract forwards it to the worker in the same transaction. Wrong or missing payment is refused by the contract.
 //
 // Abuse limits are in memory (per server instance): they reset on a cold start and are not
 // shared between instances. See docs/day2-online-demo.md.
@@ -14,7 +17,8 @@ const LEVEL_LABEL = { none: "未驗證 None", one: "真人驗證 Real-person", t
 const EMPLOYER_CHOICES = ["verified", "unverified"];
 const UNVERIFIED = "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g"; // no key exists for it; Hub answers "DID not found"
 const HEX32 = /^0x[0-9a-fA-F]{64}$/;
-const MIN_BALANCE_UMEC = 200000n;   // below this the demo stops sending
+const MIN_BALANCE_UMEC = 200000n;   // below this the demo stops sending (plus the claim on a paying confirm)
+const MAX_CLAIM_TWD = 5000;         // demo cap: at most 0.05 MEC per record
 
 let signersP = null;
 function getSigners() {
@@ -68,8 +72,11 @@ function parseAction(b) {
       if (!SETTINGS.allowedWindows.includes(secs)) return { error: `deadlineSeconds must be one of ${SETTINGS.allowedWindows.join("/")}` };
       const choice = b.employer === undefined ? "verified" : b.employer;
       if (!EMPLOYER_CHOICES.includes(choice)) return { error: `employer must be one of ${EMPLOYER_CHOICES.join("/")}` };
-      return { who: "worker", employerChoice: choice,
-        msg: (s) => ({ submit: { report_hash: b.reportHash.slice(2).toLowerCase(), employer: choice === "verified" ? s.employer.address : UNVERIFIED, deadline_seconds: secs } }) };
+      const twd = b.claimTwd === undefined ? 0 : b.claimTwd;
+      if (!Number.isSafeInteger(twd) || twd < 0 || twd > MAX_CLAIM_TWD) return { error: `claimTwd must be an integer 0..${MAX_CLAIM_TWD}` };
+      const claim = String(BigInt(twd) * BigInt(CW.umecPerTwd));
+      return { who: "worker", employerChoice: choice, claimTwd: twd, claim,
+        msg: (s) => ({ submit: { report_hash: b.reportHash.slice(2).toLowerCase(), employer: choice === "verified" ? s.employer.address : UNVERIFIED, deadline_seconds: secs, claim } }) };
     }
     case "confirm":
       if (!idOk) return { error: "id must be a positive integer" };
@@ -86,8 +93,8 @@ function parseAction(b) {
   }
 }
 
-const execMsg = (sender, msg) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
-  value: { sender, contract: CW.contract, msg: new TextEncoder().encode(JSON.stringify(msg)), funds: [] } });
+const execMsg = (sender, msg, funds = []) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+  value: { sender, contract: CW.contract, msg: new TextEncoder().encode(JSON.stringify(msg)), funds } });
 
 // the contract's own view of an address's ME ID (it calls the ME ID module on chain)
 async function meIdView(client, address) {
@@ -109,6 +116,8 @@ export async function GET() {
   return json(200, {
     network: "cosmwasm", chainId: CW.chainId, contract: CW.contract, codeId: CW.codeId, hubRest: CW.rest,
     storeTx: CW.storeTx, instTx: CW.instTx, rejectProofTx: CW.rejectProofTx,
+    settle: { denom: CW.denom, umecPerTwd: CW.umecPerTwd, mecDecimals: CW.mecDecimals, maxClaimTwd: MAX_CLAIM_TWD, note: "demo conversion, not a real exchange rate" },
+    legacy: { contract: CW.legacyContract, codeId: CW.legacyCodeId },
     worker: s?.worker.address ?? null, employer: s?.employer.address ?? null,
     employers: s ? { verified: s.employer.address, unverified: UNVERIFIED } : null,
     windows: SETTINGS.allowedWindows, minEmployerLevel,
@@ -134,7 +143,18 @@ export async function POST(request) {
 
   const signer = s[act.who];
   const msg = act.msg(s);
-  const m = execMsg(signer.address, msg);
+  // confirm pays exactly the claim the contract stored; the contract checks the amount again
+  let funds = [], claim = "0";
+  if (body.action === "confirm") {
+    try { claim = String((await s.worker.client.queryContractSmart(CW.contract, { record: { id: body.id } })).claim ?? "0"); }
+    catch (e) {
+      const name = contractErrorName(e);
+      if (name) return json(409, { ok: false, code: "contract_rejected", action: body.action, sent: false, contractError: name, message: `合約拒絕：${name}` });
+      return json(502, { ok: false, code: "upstream_error", message: String(e?.message || e).slice(0, 160) });
+    }
+    if (claim !== "0") funds = [{ denom: CW.denom, amount: claim }];
+  }
+  const m = execMsg(signer.address, msg, funds);
 
   // submit: show what the CONTRACT sees for both parties (display only; the contract enforces the rule)
   let meId = null;
@@ -149,7 +169,7 @@ export async function POST(request) {
   try {
     return await serial(act.who, async () => {
       const bal = BigInt((await signer.client.getBalance(signer.address, CW.denom)).amount);
-      if (bal < MIN_BALANCE_UMEC) return json(503, { ok: false, code: "out_of_funds", message: "示範額度用完（demo test coins used up）", signer: signer.address });
+      if (bal < MIN_BALANCE_UMEC + BigInt(claim)) return json(503, { ok: false, code: "out_of_funds", message: "示範額度用完（demo test coins used up）", signer: signer.address });
 
       // the contract decides: simulate on the chain node first, send only if the contract would accept it
       let gas;
@@ -171,6 +191,9 @@ export async function POST(request) {
       const id = Number(wasm.id ?? body.id);
       out.id = id;
       if (wasm.employer_level) out.levelsStoredOnChain = { employer: wasm.employer_level, worker: wasm.worker_level };
+      if (wasm.claim !== undefined) out.claim = wasm.claim;
+      if (wasm.settled !== undefined) out.settled = wasm.settled;
+      if (body.action === "submit") out.claimTwd = act.claimTwd;
       try { out.status = await s.worker.client.queryContractSmart(CW.contract, { effective_status: { id } }); } catch {}
       return json(200, out);
     });

@@ -1,0 +1,18 @@
+[1440] console error: Failed to load resource: the server responded with a status of 404 ()
+[1440] console error: Failed to load resource: the server responded with a status of 500 ()
+[1440] console error: Failed to load resource: the server responded with a status of 500 ()
+shot E:/projects/wage-proof/docs/evidence/day6-shots/1440-detail-settled.png
+1440 #1 props: 雇主 雇示範雇主登記時 ME ID 進階驗證 勞工 勞示範勞工 主張補發 0.00523 MECNT$523 示範換算 結算 已補發 0.00523 MEC 給勞工 報告指紋 1752775e6ca17de6…3790f9db 報告本身 沒有上鏈，留在勞工手上（示範報告檔） 合約查詢 直接看合約回傳的原始資料
+1440 #1 trail: 登記 由 示範勞工 簽名 區塊 5,353,705・23:28:05・手續費 0.0001 MEC 合約查到雇主 ME ID「進階驗證」，達到要求，寫進這筆紀錄；勞工主張補發 0.00523 MEC 交易 7ED3FD…1D33 雇主確認並補發 由 示範雇主 簽名 區塊 5,353,710・23:28:30・手續費 0.0001 MEC 補發 0.00523 MEC 給勞工：雇主付款、合約轉出，同一筆交易完成 交易 D708AC…A557
+shot E:/projects/wage-proof/docs/evidence/day6-shots/1440-composer.png
+1440 composer owed: 主張補發 NT$523（示範換算） 0.00523 MEC
+[1440] console error: Failed to load resource: the server responded with a status of 403 ()
+shot E:/projects/wage-proof/docs/evidence/day6-shots/1440-unverified-refused.png
+refused note: 合約拒絕了這次登記，沒有產生紀錄。 合約自己向 ME Network 查了雇主地址：ME ID「未驗證」，低於合約要求的「真人驗證」。伺服器改不了這條規則。 合約原文：EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below required one (source not_found) 看同樣的拒絕真的上過鏈的那筆交易
+[390] console error: Failed to load resource: the server responded with a status of 500 ()
+[390] console error: Failed to load resource: the server responded with a status of 500 ()
+shot E:/projects/wage-proof/docs/evidence/day6-shots/390-list.png
+shot E:/projects/wage-proof/docs/evidence/day6-shots/390-detail-settled.png
+shot E:/projects/wage-proof/docs/evidence/day6-shots/390-detail-settled-scrolled.png
+390 horizontal overflow: false
+shot E:/projects/wage-proof/docs/evidence/day6-shots/390-composer.png

@@ -1,6 +1,6 @@
 //! Storage without extra crates: JSON values under fixed byte keys.
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_json, to_json_vec, Addr, StdResult, Storage};
+use cosmwasm_std::{from_json, to_json_vec, Addr, StdResult, Storage, Uint128};
 
 use crate::meid::Level;
 
@@ -27,6 +27,8 @@ impl Status {
 #[cw_serde]
 pub struct Config {
     pub min_employer_level: Level,
+    /// denom a claim is paid in (the chain's native coin, `umec` on ME Hub)
+    pub settle_denom: String,
 }
 
 #[cw_serde]
@@ -46,6 +48,10 @@ pub struct Record {
     /// ME ID levels read by the contract at submit time
     pub employer_level: Level,
     pub worker_level: Level,
+    /// amount (settle_denom base units) the worker asked to be paid back; 0 = none
+    pub claim: Uint128,
+    /// amount the employer paid to the worker through the contract on confirm; 0 = not settled
+    pub settled: Uint128,
 }
 
 const CONFIG: &[u8] = b"config";

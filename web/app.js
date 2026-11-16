@@ -21,7 +21,11 @@ const ERR_ZH = {
   ZeroHash: "指紋不能是全 0",
   BadHash: "指紋格式不對",
   BadEmployer: "雇主地址不合法",
-  MeIdQueryFailed: "合約查不到 ME ID 模組，為了安全直接拒絕",
+  MeIdLookupFailed: "合約查不到 ME ID 模組，為了安全直接拒絕",
+  WrongSettlement: "雇主附的金額和勞工主張的不一樣，合約要剛好相等",
+  WrongSettlementDenom: "雇主附的不是 MEC，合約只收 MEC",
+  SettlementMissing: "這筆有主張補發金額，雇主確認時必須同時付款",
+  UnexpectedFunds: "這個動作不能附帶付款，避免錢卡在合約裡",
 };
 const VIEWS = [["all", "全部"], [1, "等待回應"], [2, "雇主確認"], [3, "雇主異議"], [4, "逾期未回應"]];
 
@@ -36,6 +40,10 @@ let refreshing = false, again = false, timer = null;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const short = (a, h = 8, t = 6) => (a ? `${a.slice(0, h)}…${a.slice(-t)}` : "—");
 const nt = (n) => `NT$${Number(n).toLocaleString("en-US")}`;
+// umec -> "0.00523 MEC" (1 MEC = 10^8 umec, from the chain's denom metadata)
+const mec = (umec) => `${(Number(umec) / 10 ** (info?.settle?.mecDecimals ?? 8)).toFixed(8).replace(/\.?0+$/, "")} MEC`;
+const claimOf = (twd) => Number(twd) * (info?.settle?.umecPerTwd ?? 1000);
+const RATE_NOTE = () => `示範換算：NT$1＝${mec(claimOf(1))}，非真實匯率`;
 const txUrl = (h) => `${info.hubRest}/cosmos/tx/v1beta1/txs/${h}`;
 const b64 = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const smartUrl = (q) => `${info.hubRest}/cosmwasm/wasm/v1/contract/${info.contract}/smart/${encodeURIComponent(b64(q))}`;
@@ -167,8 +175,10 @@ async function loadTxs(r) {
     const attr = (k) => ev?.attributes.find((a) => a.key === k)?.value;
     if (Number(attr("id")) !== r.id) continue;
     const fee = t.tx?.auth_info?.fee?.amount?.find((a) => a.denom === "umec")?.amount;
-    list.push({ action: attr("action"), label: name[attr("action")] || attr("action"), hash: t.txhash, height: Number(t.height),
-      time: Date.parse(t.timestamp) / 1000, fee: fee ? Number(fee) / 1e8 : null, signer: t.tx?.body?.messages?.[0]?.sender });
+    const settled = attr("settled") ?? "0";
+    list.push({ action: attr("action"), label: attr("action") === "confirm" && settled !== "0" ? "雇主確認並補發" : name[attr("action")] || attr("action"),
+      hash: t.txhash, height: Number(t.height), time: Date.parse(t.timestamp) / 1000, fee: fee ? Number(fee) / 1e8 : null,
+      signer: t.tx?.body?.messages?.[0]?.sender, settled });
   }
   list.sort((a, b) => a.height - b.height);
   txByRecord.set(r.id, { status: r.status, list, full: true });
@@ -237,7 +247,8 @@ async function callDemo(body) {
       const id = j.id ?? body.id;
       txByRecord.delete(id);
       if (body.action === "submit") { sel = id; mode = "detail"; view = "all"; }
-      toast("ok", `${LABEL[body.action]}成功，紀錄 #${id} 現在是「${esc(STATUS[ST[j.status]] || j.status || "—")}」。寫入區塊 <span class="mono">${Number(j.blockNumber).toLocaleString("en-US")}</span>，花了 ${secs} 秒。<br>${ext(j.verifyUrl, `交易 <code>${esc(short(j.txHash, 6, 4))}</code>`)}`);
+      const paid = body.action === "confirm" && j.settled && j.settled !== "0" ? `同一筆交易補發 <b>${esc(mec(j.settled))}</b> 給勞工。` : "";
+      toast("ok", `${LABEL[body.action]}成功，紀錄 #${id} 現在是「${esc(STATUS[ST[j.status]] || j.status || "—")}」。${paid}寫入區塊 <span class="mono">${Number(j.blockNumber).toLocaleString("en-US")}</span>，花了 ${secs} 秒。<br>${ext(j.verifyUrl, `交易 <code>${esc(short(j.txHash, 6, 4))}</code>`)}`);
     } else if (body.action === "submit") {
       submitting = { error: j, http: res.status };
     } else if (j.code === "employer_not_verified" || j.code === "contract_rejected") {
@@ -354,8 +365,11 @@ function detailHtml(r) {
     const p = progress(r);
     clock = `<div class="clock"><span class="big p" data-left="${r.deadline}" data-fmt="clock">${clockText(r.deadline - chainNow())}</span><small>後到期（回應期限 ${dur(win)}）</small></div>
       <div class="track live" style="--c:#f2c94c" data-s="${r.submitted_at}" data-d="${r.deadline}"><span style="width:${p * 100}%"></span></div>`;
-    act = mine ? `<div class="act"><p>換成<b>示範雇主</b>的身分回應（ME ID ${esc(LV[levelOf(info.employer).state])}）。差額屬實就確認；不同意就寫一句理由，鏈上只存理由的指紋。</p>
-      <div class="r"><button class="btn" type="button" data-a="confirm" data-id="${r.id}"${dis("confirm", r.id)}>${icon(2)}確認這筆差額</button></div>
+    const owe = r.claim && r.claim !== "0";
+    act = mine ? `<div class="act"><p>換成<b>示範雇主</b>的身分回應（ME ID ${esc(LV[levelOf(info.employer).state])}）。${owe
+        ? `差額屬實就確認，同一筆交易從雇主帳號付 <b>${esc(mec(r.claim))}</b>，合約轉給勞工；金額不對合約會拒絕。`
+        : "差額屬實就確認。"}不同意就寫一句理由，鏈上只存理由的指紋，不付款。</p>
+      <div class="r"><button class="btn" type="button" data-a="confirm" data-id="${r.id}"${dis("confirm", r.id)}>${icon(2)}${owe ? `確認並補發 ${esc(mec(r.claim))}` : "確認這筆差額"}</button></div>
       <label for="reason-${r.id}">不同意的理由</label>
       <div class="r"><input class="field" id="reason-${r.id}" maxlength="200" placeholder="例如：那 2 小時是自願留下，不算加班">
       <button class="btn" type="button" data-a="dispute" data-id="${r.id}"${dis("dispute", r.id)}>${icon(3)}提出異議</button></div>
@@ -375,7 +389,8 @@ function detailHtml(r) {
   const trail = (tx?.list || []).map((t) => `<li><span class="dot">${t.action === "submit" ? `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="#d0d6e0"/></svg>` : icon({ confirm: 2, dispute: 3, mark_expired: 4 }[t.action] || 4)}</span>
     <div><b>${esc(t.label)}</b>　<span class="m">由 ${esc(nameOf(t.signer))} 簽名</span>
     <div class="m">區塊 <span class="mono">${t.height.toLocaleString("en-US")}</span>・${hms(t.time)}${t.fee != null ? `・手續費 <span class="mono">${t.fee.toFixed(4)}</span> MEC` : ""}</div>
-    ${t.action === "submit" ? `<div class="m">合約查到雇主 ME ID「${esc(LV[r.employer_level] || r.employer_level)}」，達到要求，寫進這筆紀錄</div>` : ""}
+    ${t.action === "submit" ? `<div class="m">合約查到雇主 ME ID「${esc(LV[r.employer_level] || r.employer_level)}」，達到要求，寫進這筆紀錄${r.claim && r.claim !== "0" ? `；勞工主張補發 ${esc(mec(r.claim))}` : ""}</div>` : ""}
+    ${t.action === "confirm" && t.settled !== "0" ? `<div class="m">補發 <span class="mono">${esc(mec(t.settled))}</span> 給勞工：雇主付款、合約轉出，同一筆交易完成</div>` : ""}
     <div class="m">${ext(txUrl(t.hash), `交易 <code>${esc(short(t.hash, 6, 4))}</code>`)}</div></div></li>`).join("");
   const waiting = r.eff === 1 ? `<li><span class="dot"></span><div><b style="color:var(--ink-3)">等待雇主回應</b><div class="m">期限 ${hms(r.deadline)}</div></div></li>` : "";
   return `<div class="ph">${icon(r.eff, r.eff === 1 ? progress(r) : 0)}<span>${STATUS[r.eff]}</span><span class="mono">#${r.id}</span>${closeBtn()}</div>
@@ -390,12 +405,20 @@ function detailHtml(r) {
     <div class="sec"><h3>這筆紀錄在鏈上的樣子</h3><dl class="props">
       <dt>雇主</dt><dd>${avatar(r.employer)}${esc(nameOf(r.employer))}<span class="tag ${r.employer_level === "none" ? "no" : "ok"}">登記時 ME ID ${esc(LV[r.employer_level] || r.employer_level)}</span></dd>
       <dt>勞工</dt><dd>${avatar(r.worker)}${esc(nameOf(r.worker))}</dd>
+      <dt>主張補發</dt><dd>${r.claim && r.claim !== "0" ? `<span class="mono">${esc(mec(r.claim))}</span>${rep ? `<span class="tag">${nt(rep.short)} 示範換算</span>` : ""}` : "沒有主張金額"}</dd>
+      <dt>結算</dt><dd>${settleText(r)}</dd>
       <dt>報告指紋</dt><dd><code title="${esc(r.report_hash)}">${esc(short(r.report_hash, 16, 8))}</code></dd>
       <dt>報告本身</dt><dd>沒有上鏈，留在勞工手上${rep ? `（${ext(rep.url, "示範報告檔")}）` : ""}</dd>
       <dt>合約查詢</dt><dd>${ext(smartUrl({ record: { id: r.id } }), "直接看合約回傳的原始資料")}</dd></dl></div>
     <div class="sec"><h3>鏈上交易<small>${tx ? `${tx.list.length} 筆` : "讀取中"}</small></h3>
       ${tx || waiting ? `<ol class="trail">${trail}${waiting}</ol>` : `<p class="empty" style="padding:0">讀取交易中…</p>`}</div>
   </div>`;
+}
+
+function settleText(r) {
+  if (!r.claim || r.claim === "0") return "不涉及付款";
+  if (r.settled && r.settled !== "0") return `已補發 <span class="mono">${esc(mec(r.settled))}</span> 給勞工`;
+  return `未結算・${{ 1: "等雇主確認", 3: "雇主異議，沒有付款", 4: "逾期，沒有付款" }[r.eff] || ""}`;
 }
 
 function composerHtml() {
@@ -433,6 +456,9 @@ function composerHtml() {
     <span class="flabel">報告（示範資料，報告本身不上鏈）</span>
     <div class="opts" id="repOpts">${opts || `<p class="empty" style="padding:0">示範報告讀取失敗，請重新整理。</p>`}</div>
     <p class="hint">上鏈的只有這份報告的 SHA-256 指紋：<code>${esc(reportHash || "—")}</code></p>
+    ${reports.get(reportHash) ? `<span class="flabel">補發金額</span>
+    <div class="owed"><span>主張補發 ${nt(reports.get(reportHash).short)}（示範換算）</span><b style="white-space:nowrap">${esc(mec(claimOf(reports.get(reportHash).short)))}</b></div>
+    <p class="hint">${RATE_NOTE()}。雇主確認時要同時付這個金額，合約轉給勞工；異議或逾期不付款。</p>` : ""}
     <span class="flabel">雇主回應期限</span>
     <div class="seg" role="radiogroup" aria-label="雇主回應期限">${[[30, "30 秒"], [60, "60 秒"], [3600, "1 小時"]].map(([v, t]) =>
       `<label><input type="radio" name="win" value="${v}" ${windowSecs === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
@@ -448,14 +474,16 @@ function composerHtml() {
 function toolsHtml() {
   return `<div class="ph"><span>規則與 ME ID 查詢</span>${closeBtn()}</div>
   <div class="pb">
-    <h2>合約怎麼用 ME ID</h2>
-    <p class="lead">登記時，合約自己向 ME Network 的身分模組查雇主地址；等級不到就拒絕，查到的等級寫進紀錄。這條規則寫在合約裡，網頁和伺服器都改不了。</p>
+    <h2>合約怎麼用 ME ID 和 MEC</h2>
+    <p class="lead">登記時，合約自己向 ME Network 的身分模組查雇主地址；等級不到就拒絕，查到的等級寫進紀錄。雇主確認有主張金額的紀錄時，必須在同一筆交易附上剛好那個金額的 MEC，合約直接轉給勞工；少付、多付、沒付都會被拒絕。這些規則寫在合約裡，網頁和伺服器都改不了。</p>
     <dl class="props">
       <dt>雇主最低等級</dt><dd><span class="tag ok">ME ID ${esc(LV[info.minEmployerLevel] || "—")}</span>${ext(smartUrl({ config: {} }), "看合約設定")}</dd>
       <dt>合約地址</dt><dd><code title="${esc(info.contract)}">${esc(short(info.contract, 12, 6))}</code></dd>
       <dt>部署交易</dt><dd>${ext(txUrl(info.instTx), `<code>${esc(short(info.instTx, 8, 4))}</code>`)}</dd>
       <dt>拒絕紀錄</dt><dd>${ext(txUrl(info.rejectProofTx), `<code>${esc(short(info.rejectProofTx, 8, 4))}</code>`)}　合約退回沒有 ME ID 的雇主</dd>
+      <dt>補發幣別</dt><dd>MEC（鏈上單位 <code>${esc(info.settle?.denom || "umec")}</code>，1 MEC＝10<sup>8</sup> umec）<br>${RATE_NOTE()}</dd>
       <dt>網路</dt><dd>ME Network 測試網 <code>${esc(info.chainId)}</code>・CosmWasm code ${esc(info.codeId)}</dd>
+      ${info.legacy?.contract ? `<dt>舊合約</dt><dd>${ext(`${info.hubRest}/cosmwasm/wasm/v1/contract/${info.legacy.contract}/smart/${encodeURIComponent(b64({ list: { limit: 30 } }))}`, "舊合約紀錄")}（code ${esc(info.legacy.codeId)}，沒有補發功能，紀錄原樣保留）</dd>` : ""}
     </dl>
     <div class="sec"><h3>查任一地址的 ME ID</h3>
       <div class="lookup"><input class="field" id="meidAddr" placeholder="貼上 me1 開頭的地址" autocomplete="off" spellcheck="false" aria-label="me1 地址">
@@ -506,7 +534,7 @@ function openPanel(m, id) {
 }
 async function onPanelClick(e) {
   if (e.target.closest("[data-close]")) { panelOpen = false; if (mode !== "detail") mode = "detail"; renderList(); renderPanel(true); return; }
-  if (e.target.id === "submitBtn") return callDemo({ action: "submit", reportHash: "0x" + reportHash, deadlineSeconds: windowSecs, employer: employerChoice });
+  if (e.target.id === "submitBtn") return callDemo({ action: "submit", reportHash: "0x" + reportHash, deadlineSeconds: windowSecs, employer: employerChoice, claimTwd: reports.get(reportHash)?.short ?? 0 });
   if (e.target.id === "meidBtn") return lookupMeId();
   const b = e.target.closest("button[data-a]");
   if (!b) return;

@@ -58,7 +58,7 @@ type Deps_ = OwnedDeps<MockStorage, MockApi, DidQuerier>;
 
 fn setup(min: Option<Level>) -> Deps_ {
     let mut deps = OwnedDeps { storage: MockStorage::default(), api: MockApi::default(), querier: DidQuerier, custom_query_type: PhantomData };
-    instantiate(deps.as_mut(), mock_env(), mock_info("me1admin", &[]), InstantiateMsg { min_employer_level: min }).unwrap();
+    instantiate(deps.as_mut(), mock_env(), mock_info("me1admin", &[]), InstantiateMsg { min_employer_level: min, settle_denom: None }).unwrap();
     deps
 }
 
@@ -73,7 +73,7 @@ fn exec(deps: &mut Deps_, t: u64, sender: &str, msg: ExecuteMsg) -> StdResult<co
     execute(deps.as_mut(), env_at(t), mock_info(sender, &[]), msg)
 }
 fn submit_msg(employer: &str, window: u64) -> ExecuteMsg {
-    ExecuteMsg::Submit { report_hash: REPORT.into(), employer: employer.into(), deadline_seconds: window }
+    ExecuteMsg::Submit { report_hash: REPORT.into(), employer: employer.into(), deadline_seconds: window, claim: None }
 }
 fn submit_ok(deps: &mut Deps_, employer: &str, window: u64) -> u64 {
     let res = exec(deps, T0, WORKER, submit_msg(employer, window)).unwrap();
@@ -114,7 +114,7 @@ fn s01_submit_stores_hash_parties_deadline_and_emits_event() {
 fn s02_submit_rejects_bad_hash_bad_employer_window_out_of_range() {
     let mut d = setup(None);
     let zero = "0".repeat(64);
-    let m = |h: &str, e: &str, w: u64| ExecuteMsg::Submit { report_hash: h.into(), employer: e.into(), deadline_seconds: w };
+    let m = |h: &str, e: &str, w: u64| ExecuteMsg::Submit { report_hash: h.into(), employer: e.into(), deadline_seconds: w, claim: None };
     assert!(err_of(exec(&mut d, T0, WORKER, m(&zero, EMP_TWO, 600))).contains("ZeroHash"));
     assert!(err_of(exec(&mut d, T0, WORKER, m("abc", EMP_TWO, 600))).contains("BadHash"));
     assert!(err_of(exec(&mut d, T0, WORKER, m(&format!("0x{}", &REPORT[2..]), EMP_TWO, 600))).contains("BadHash"));
@@ -217,7 +217,7 @@ fn s10_same_report_submitted_again_and_both_ids_listed() {
     submit_ok(&mut d, EMP_TWO, 600);
     submit_ok(&mut d, EMP_ONE, 600);
     let other = "1".repeat(64);
-    exec(&mut d, T0, WORKER, ExecuteMsg::Submit { report_hash: other, employer: EMP_TWO.into(), deadline_seconds: 600 }).unwrap();
+    exec(&mut d, T0, WORKER, ExecuteMsg::Submit { report_hash: other, employer: EMP_TWO.into(), deadline_seconds: 600, claim: None }).unwrap();
     let ids: Vec<u64> = from_json(query(d.as_ref(), mock_env(), QueryMsg::RecordsForReport { report_hash: REPORT.to_uppercase() }).unwrap()).unwrap();
     assert_eq!(ids, vec![1, 2]);
 }
@@ -270,7 +270,7 @@ fn m05_min_level_two_rejects_level_one_and_none_is_not_allowed_as_min() {
     let c: Config = from_json(query(d.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
     assert_eq!(c.min_employer_level, Level::Two);
     let mut deps = OwnedDeps { storage: MockStorage::default(), api: MockApi::default(), querier: DidQuerier, custom_query_type: PhantomData::<Empty> };
-    let e = instantiate(deps.as_mut(), mock_env(), mock_info("me1admin", &[]), InstantiateMsg { min_employer_level: Some(Level::None) });
+    let e = instantiate(deps.as_mut(), mock_env(), mock_info("me1admin", &[]), InstantiateMsg { min_employer_level: Some(Level::None), settle_denom: None });
     assert!(e.unwrap_err().to_string().contains("BadConfig"));
     let d1 = setup(None);
     let c: Config = from_json(query(d1.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
@@ -318,7 +318,120 @@ fn m08_storage_holds_no_personal_data_fields() {
     let v: serde_json_keys::Obj = from_json(to_json_binary(&record(&d, 1)).unwrap()).unwrap();
     let mut keys: Vec<_> = v.0.into_iter().collect();
     keys.sort();
-    assert_eq!(keys, ["closed_at", "closed_by", "deadline", "employer", "employer_level", "id", "reason_hash", "report_hash", "status", "submitted_at", "worker", "worker_level"]);
+    assert_eq!(keys, ["claim", "closed_at", "closed_by", "deadline", "employer", "employer_level", "id", "reason_hash", "report_hash", "settled", "status", "submitted_at", "worker", "worker_level"]);
+}
+
+// ---- settlement in MEC (v0.3): confirm with a claim pays the worker in the same transaction ----
+
+const CLAIM: u128 = 523_000;
+
+fn submit_claim(deps: &mut Deps_, claim: u128) -> u64 {
+    let msg = ExecuteMsg::Submit {
+        report_hash: REPORT.into(),
+        employer: EMP_TWO.into(),
+        deadline_seconds: 600,
+        claim: Some(cosmwasm_std::Uint128::new(claim)),
+    };
+    let res = exec(deps, T0, WORKER, msg).unwrap();
+    assert_eq!(attr(&res, "claim"), claim.to_string());
+    attr(&res, "id").parse().unwrap()
+}
+fn exec_pay(deps: &mut Deps_, sender: &str, msg: ExecuteMsg, funds: &[cosmwasm_std::Coin]) -> StdResult<cosmwasm_std::Response> {
+    execute(deps.as_mut(), env_at(T0 + 10), mock_info(sender, funds), msg)
+}
+
+#[test]
+fn p01_confirm_with_exact_claim_sends_it_to_the_worker_and_records_settled() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, CLAIM);
+    assert_eq!(record(&d, id).claim.u128(), CLAIM);
+    assert!(record(&d, id).settled.is_zero());
+    let res = exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &cosmwasm_std::coins(CLAIM, "umec")).unwrap();
+    assert_eq!(res.messages.len(), 1);
+    assert_eq!(
+        res.messages[0].msg,
+        cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address: WORKER.into(), amount: cosmwasm_std::coins(CLAIM, "umec") })
+    );
+    assert_eq!(attr(&res, "claim"), CLAIM.to_string());
+    assert_eq!(attr(&res, "settled"), CLAIM.to_string());
+    let r = record(&d, id);
+    assert_eq!(r.status, Status::Confirmed);
+    assert_eq!(r.settled.u128(), CLAIM);
+}
+
+#[test]
+fn p02_underpay_overpay_and_no_payment_are_rejected_and_nothing_changes() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, CLAIM);
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &cosmwasm_std::coins(CLAIM - 1, "umec")));
+    assert!(e.contains("WrongSettlement:"), "{e}");
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &cosmwasm_std::coins(CLAIM + 1, "umec")));
+    assert!(e.contains("WrongSettlement:"), "{e}");
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &[]));
+    assert!(e.contains("SettlementMissing"), "{e}");
+    let r = record(&d, id);
+    assert_eq!(r.status, Status::Pending);
+    assert!(r.settled.is_zero());
+}
+
+#[test]
+fn p03_wrong_denom_or_extra_coin_is_rejected() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, CLAIM);
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &cosmwasm_std::coins(CLAIM, "uatom")));
+    assert!(e.contains("WrongSettlementDenom"), "{e}");
+    let two = vec![cosmwasm_std::coin(CLAIM, "umec"), cosmwasm_std::coin(1, "uatom")];
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &two));
+    assert!(e.contains("WrongSettlementDenom"), "{e}");
+    assert_eq!(record(&d, id).status, Status::Pending);
+}
+
+#[test]
+fn p04_claim_zero_confirm_must_not_carry_coins() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, 0);
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &cosmwasm_std::coins(1, "umec")));
+    assert!(e.contains("UnexpectedFunds"), "{e}");
+    let res = exec_pay(&mut d, EMP_TWO, ExecuteMsg::Confirm { id }, &[]).unwrap();
+    assert!(res.messages.is_empty());
+    assert_eq!(attr(&res, "settled"), "0");
+    assert_eq!(record(&d, id).status, Status::Confirmed);
+}
+
+#[test]
+fn p05_dispute_submit_and_mark_expired_refuse_coins() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, CLAIM);
+    let pay = cosmwasm_std::coins(CLAIM, "umec");
+    let e = err_of(exec_pay(&mut d, EMP_TWO, ExecuteMsg::Dispute { id, reason_hash: REASON.into() }, &pay));
+    assert!(e.contains("UnexpectedFunds"), "{e}");
+    let sub = ExecuteMsg::Submit { report_hash: REPORT.into(), employer: EMP_TWO.into(), deadline_seconds: 600, claim: None };
+    let e = err_of(exec_pay(&mut d, WORKER, sub, &pay));
+    assert!(e.contains("UnexpectedFunds"), "{e}");
+    let e = err_of(execute(d.as_mut(), env_at(T0 + 601), mock_info(STRANGER, &pay), ExecuteMsg::MarkExpired { id }));
+    assert!(e.contains("UnexpectedFunds"), "{e}");
+    // without coins a dispute works and nothing is paid
+    let res = exec_pay(&mut d, EMP_TWO, ExecuteMsg::Dispute { id, reason_hash: REASON.into() }, &[]).unwrap();
+    assert!(res.messages.is_empty());
+    assert_eq!(attr(&res, "settled"), "0");
+    let r = record(&d, id);
+    assert_eq!(r.status, Status::Disputed);
+    assert_eq!(r.claim.u128(), CLAIM);
+    assert!(r.settled.is_zero());
+}
+
+#[test]
+fn p06_payment_rules_do_not_bypass_who_and_when() {
+    let mut d = setup(None);
+    let id = submit_claim(&mut d, CLAIM);
+    let pay = cosmwasm_std::coins(CLAIM, "umec");
+    // the worker (or anyone else) paying does not count as the employer's confirmation
+    let e = err_of(exec_pay(&mut d, WORKER, ExecuteMsg::Confirm { id }, &pay));
+    assert!(e.contains("NotEmployer"), "{e}");
+    let e = err_of(execute(d.as_mut(), env_at(T0 + 601), mock_info(EMP_TWO, &pay), ExecuteMsg::Confirm { id }));
+    assert!(e.contains("DeadlinePassed"), "{e}");
+    let c: Config = from_json(query(d.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
+    assert_eq!(c.settle_denom, "umec");
 }
 
 mod serde_json_keys {

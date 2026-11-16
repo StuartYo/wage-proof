@@ -1,0 +1,31 @@
+# Online demo on the v0.3 settlement contract, 2026-11-16 (Taiwan 23:38-23:41)
+# headless Chrome (Playwright, system Chrome channel) against https://wage-proof.vercel.app/ after `vercel deploy --prod`
+contract=me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg codeId=22
+GET /api/demo -> contract me1gsy3…x2yg, codeId 22, settle {denom umec, umecPerTwd 1000, mecDecimals 8, note "demo conversion, not a real exchange rate"}
+
+## A) register (verified demo employer, 1 hour) -> confirm and pay
+submit: 6.0 s, toast "登記成功，紀錄 #4 現在是「等待回應」"
+  tx 41E26714474055E8036ABE095CFB9CD12BFB1DED4D741C75C04544781E592921 height 5353837 action=submit claim=523000
+  https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/41E26714474055E8036ABE095CFB9CD12BFB1DED4D741C75C04544781E592921
+button text on the record: "確認並補發 0.00523 MEC"
+confirm: 8.8 s, toast "確認成功，紀錄 #4 現在是「雇主確認」。同一筆交易補發 0.00523 MEC 給勞工。"
+  tx 2E36A40910791541CA0D2997514E15F27E11033F05FA12898E99BA5D06C19F03 height 5353839 action=confirm claim=523000 settled=523000 funds=[{"denom":"umec","amount":"523000"}]
+  https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/2E36A40910791541CA0D2997514E15F27E11033F05FA12898E99BA5D06C19F03
+record 4 (contract query): status=confirmed claim=523000 settled=523000 closed_by=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf
+detail panel after confirm: 主張補發 0.00523 MEC (NT$523 示範換算) / 結算 已補發 0.00523 MEC 給勞工
+trail: 登記 … 勞工主張補發 0.00523 MEC / 雇主確認並補發 … 補發 0.00523 MEC 給勞工：雇主付款、合約轉出，同一筆交易完成
+contract balance afterwards: {"balances":[]} (the contract keeps nothing)
+
+## B) register with the address that has no ME ID -> refused by the contract
+note: "合約拒絕了這次登記，沒有產生紀錄。… ME ID「未驗證」，低於合約要求的「真人驗證」…"
+contract text: EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below required one (source not_found)
+record count stayed 4 (server only simulates a refused call, nothing sent)
+link "看同樣的拒絕真的上過鏈的那筆交易" -> tx 7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF (cw-d-e2e.txt step 6)
+
+## 390 px
+no horizontal overflow (scrollWidth <= innerWidth); list, detail (settled #1) and composer usable
+
+screenshots: docs/evidence/day6-shots/ (1440-composer, 1440-pending-confirm-button, 1440-confirmed-paid, 1440-unverified-refused,
+1440-detail-settled, 390-list, 390-detail-settled, 390-detail-settled-scrolled, 390-composer)
+console errors seen: 404 favicon; HTTP 500 from Hub REST /metaearth/did/did for the two addresses without ME ID, demo worker and me1mhyn… (the node answers
+"DID not found" with 500; the page reads the body and shows "未驗證"), same as before day 6.

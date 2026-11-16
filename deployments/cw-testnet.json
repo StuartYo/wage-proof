@@ -52,5 +52,36 @@
     },
     "admin": "",
     "deployedAt": "2026-11-16T09:50:12.273Z"
+  },
+  "wageProofSettle": {
+    "codeId": 22,
+    "contract": "me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg",
+    "storeTx": "31ACCEEDF21976E082B57A6A77B9DACF82F9CCBE707572ABD79837B8683DFB88",
+    "storeFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "230808"
+        }
+      ],
+      "gas": "11540353"
+    },
+    "instTx": "CD9DE85B577CDFDE9A67F40384B4AA0EE0F1AA8D4D1A2A6B07EA4278A7216B78",
+    "instFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "10000"
+        }
+      ],
+      "gas": "383357"
+    },
+    "wasmSha256": "7e3a3564614efd81196a3c28d56f167d292a00490603752793d4b3d7f4ddeda6",
+    "initMsg": {
+      "min_employer_level": "one",
+      "settle_denom": "umec"
+    },
+    "admin": "",
+    "deployedAt": "2026-11-16T15:28:02.231Z"
   }
 }
