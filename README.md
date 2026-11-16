@@ -1,92 +1,90 @@
-# wage-proof：工資證據「確認或異議」存證
+# wage-proof：工資對帳存證
 
-> **2026-11-10 起為 MetaEarth Hackathon 2026: BEACON 台灣站新寫。** 本倉庫所有程式碼都是比賽期間新增，沒有從舊專案複製程式碼。
+> 2026-11-10 起為 MetaEarth Hackathon 2026: BEACON 台灣站新寫，第一筆 commit `4caf681`。賽道：AI 與信任基礎設施。
 
-賽道：AI 與信任基礎設施。
+勞工發現薪資單少算時數，把比對報告的指紋（SHA-256）登記到 ME Network，指名雇主在期限內回應：
 
-勞工把「薪資單與出勤比對報告」的指紋（SHA-256）登記到 ME Network 上，指定的雇主要在期限內「確認」或「異議」，逾期沒回應時任何人都能把它記成「逾期未回應」。登記前，伺服器會到 ME 測試網查指定雇主的 ME ID（真人驗證），等級不夠就不送交易，避免有人開一堆假帳號冒充雇主、灌假的確認紀錄；每筆紀錄旁邊也顯示雙方目前的等級。測試網的 ME ID 是官方提供的模擬身分，不代表真實法律身分驗證。
+- **確認**：同一筆交易用 MEC 把差額補發給勞工，金額不對合約就拒絕。
+- **異議**：留下一句理由的指紋，不付款。
+- **不回應**：期限過後任何人都能記為逾期，雇主之後回應會被合約拒絕。
 
-**鏈上只有：報告指紋、地址、時間、狀態。** 報告本身（可能有個資）永遠不上鏈。倉庫裡的示範報告 `demo/synthetic-report.json` 是手寫的合成資料，人名、公司、金額全部虛構。
+雇主的 ME ID 由合約自己查，沒有「真人驗證」以上就拒絕登記。鏈上只有指紋、地址、時間、等級、狀態和補發金額；薪資單與出勤紀錄不上鏈。
 
-## 線上示範（評審 3 分鐘跑完）
+完整說明（問題、數據、ME 用在哪裡、證據）：[`docs/專案說明.md`](docs/專案說明.md)
 
-**https://wage-proof.vercel.app/** ——不用裝錢包、不用領幣。頁面上的報告與理由都是示範用合成資料，寫入的是 ME 測試網（鏈 ID 400）。
+## 線上試用（約 3 分鐘）
 
-1. 「勞工 Worker」：選一份比對報告（指紋由瀏覽器自己算），期限選 **30 秒**，「指定雇主」選**示範雇主（已進階驗證）**，按「登記上鏈」。約 5～10 秒後「操作紀錄」出現交易雜湊與「在鏈上查證」連結，下方「鏈上紀錄」多一筆「等待雇主回應」，開始倒數。
-2. 再登記一筆，期限選 **1 小時**。
-3. 「指定雇主」改選**未驗證的地址（示範被擋下）**，按「登記上鏈」：按鈕下方出現紅框，寫明這個地址在 ME 測試網查到「未驗證 None」（節點回 `DID not found`）、規則要求至少「真人驗證」，所以沒有送出交易，鏈上紀錄不會多一筆。
-4. 切到「雇主 Employer」：「待我回應」列出兩筆。對 1 小時那筆按「確認」，或寫一句理由按「異議」（鏈上只放理由的指紋）。
-5. 等 30 秒那筆倒數歸零（狀態變「逾期未回應（尚未寫入鏈上）」），任何角色按「記為逾期未回應」。這時雇主再想回應會被合約拒絕。
-6. 點任一筆的「在鏈上查證」，看 ME 測試網 Hub 回傳的原始交易紀錄。
-7. 每筆紀錄的勞工、雇主旁邊有等級字樣（進階驗證／真人驗證／未驗證），旁邊的「在鏈上查證」是 Hub 原始回應。最下方「真人驗證查詢」可以貼任何 me1 或 0x 地址查。
+**https://wage-proof.vercel.app/**　不用錢包、不用領幣，寫入的是 ME 測試網。
 
-伺服器用兩個**只有測試幣、隨時可以作廢重產**的示範帳號代簽；誰能做什麼一律由合約判斷。頻率限制：同一來源每分鐘 6 次寫入、全站每天 300 次（記憶體計數，冷啟動歸零）。架構、規則、風險：`docs/day2-online-demo.md`；ME ID 檢查：`docs/day3-meid.md`。
+1. 中間是鏈上的紀錄，點一筆看右邊：出勤對薪資單、倒數、每一步的交易（誰簽、區塊、手續費、連結）。
+2. 右上角「登記報告」：選報告，期限選 60 秒，雇主選「示範雇主」，按「登記這份報告」。約 5～10 秒出塊。
+3. 在右邊用示範雇主身分按「確認並補發 0.00523 MEC」，或寫理由按「提出異議」。
+4. 再登記一筆，雇主改選「沒有 ME ID 的地址」，看合約拒絕的原文。
+5. 想看逾期：登記 30 秒的不回應，到期後按「記為逾期」。
 
-## 測試網錢包（重要）
+伺服器用兩個只有測試幣的示範帳號代簽，送出前先在節點上模擬，合約會拒絕就不送。誰能做什麼仍由合約決定。頻率限制：同一來源每分鐘 6 次寫入、全站每天 300 次。
 
-`npm run wallet` 會在本機產生一個**只給 ME Network 測試網用**的錢包，助記詞寫在 `.env`（已被 `.gitignore` 擋掉，不會進 git）。**不得存入任何真實資產。** 公開地址記在 `config/wallet.public.json`。
+## 合約
 
-## 狀態（2026-11-16）
-
-| 項目 | 狀態 |
+| 項目 | 值 |
 |---|---|
-| 測試網只讀連線（Hub REST／RPC、EVM JSON-RPC chainId 400） | 通 |
-| ME ID 只讀查詢（有／沒有兩種情況） | 通 |
-| ME ID 接進登記流程（雇主沒有真人驗證就不送交易） | 線上實測通過（`docs/day3-meid.md`） |
-| 合約 `WageProof.sol` 本機測試 | 10 項全過 |
-| 部署到測試網、memo 交易 | 完成：合約 `0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0`，確認／異議／逾期三條路徑已在測試網跑通 |
-| 線上示範 https://wage-proof.vercel.app/ | 上線；讀鏈走唯讀中繼、寫鏈由伺服器用示範帳號代簽 |
-| 本機示範頁（`web/local.html`） | 只連本機模擬鏈 |
-| CosmWasm 正式合約（合約自己查雇主 ME ID） | 單元測試 22 項全過；測試網 code id 21 實跑 11 項照預期（2026-11-16） |
+| 鏈 | ME Network 測試網，chain-id `mechain_400-1` |
+| 合約 | CosmWasm，code id **22**，`me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg` |
+| admin | 空（沒有人能改規則或遷移） |
+| 雇主最低 ME ID 等級 | one（真人驗證），建立時寫死 |
+| 期限 | 30 秒～90 天 |
+| 原始碼 | `cw/wage-proof-cw/src/`（`lib.rs` 規則、`meid.rs` 查身分、`state.rs` 紀錄、`tests.rs` 單元測試） |
 
-### 兩個合約，各自的角色
+四個動作：`submit`（勞工）、`confirm`（只有被指名的雇主，附剛好等於 `claim` 的 umec）、`dispute`（只有被指名的雇主）、`mark_expired`（任何人，期限過後）。錯誤都有名字，例如 `EmployerNotVerified`、`WrongSettlement`、`SettlementMissing`、`UnexpectedFunds`、`NotEmployer`、`DeadlinePassed`，網頁會翻成白話。
 
-- **Solidity 版**（`contracts/WageProof.sol`，ME 測試網 EVM）：線上示範用的就是它。確認／異議／逾期由合約把關；「雇主要有 ME ID」由伺服器先查，查過才送交易。
-- **CosmWasm 正式合約**（`cw/wage-proof-cw/`，ME 測試網 code id 21，`me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc`）：規則和 Solidity 版一樣，另外**合約登記時自己查雇主的 ME ID**，等級不到 one 就拒絕，並把雙方當下的等級存進紀錄。測試網已實跑：沒有 ME ID 的雇主被合約擋下、等級 two 的雇主登記成功、30 秒逾期後第三方標記成功。admin 留空，沒有人能改這份合約。線上示範還沒接過來。詳見 `docs/day5-cosmwasm-contract.md`。
-- **CosmWasm 探路合約**（code id 13）：第四天用來確認合約能不能查 ME ID，現在只留作紀錄。
+示範換算：NT$1＝0.00001 測試 MEC（不是真實匯率），報告少算的 NT$523 補發 0.00523 MEC。
 
-細節與證據：`docs/day1.md`、`docs/day2-online-demo.md`、`docs/day3-meid.md`、`docs/day4-cosmwasm.md`、`docs/day5-cosmwasm-contract.md`。
+## 證據
 
-## 啟動步驟
+| 項目 | 結果 | 紀錄 |
+|---|---|---|
+| 合約單元測試 | 28 項全過 | `docs/evidence/cw-d-unit-test.txt` |
+| 測試網實跑（補發、少付、多付、沒付、異議附錢、沒有 ME ID） | 18 項照預期 | `docs/evidence/cw-d-e2e.txt` |
+| 線上示範實按 | 登記 6.0 秒、確認並補發 8.8 秒 | `docs/evidence/cw-d-online.txt` |
+
+幾筆可以直接查的交易（`https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/<雜湊>`）：
+
+- 確認並補發，勞工餘額剛好 +523,000 umec：`D708AC6AFFF03E5B965181AF723B8732E0C7861AB49AAE1B6B4F4E300CCBA557`
+- 少付 1 umec 被拒：`94C8585CE22D4AEF908337D786975416C771D6A4627B79E373E2A4C39D43096F`
+- 雇主沒有 ME ID 被拒：`7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF`
+
+開發紀錄：`docs/day1.md`～`docs/day6-mec-settlement.md`。
+
+## 本機執行
 
 需要 Node.js 20 以上。
 
 ```bash
 npm install
-npm run wallet            # 產生測試網錢包（只印地址）
 npm run check             # 測試網端點只讀檢查
-npm run meid -- me1...    # 查某地址有沒有 ME ID
-npm test                  # 合約測試（本機模擬鏈）
+npm run meid -- me1...    # 查某個地址的 ME ID 等級
 ```
 
-本機示範頁：
+合約單元測試與編譯（需要 Rust 1.78 與 `wasm32-unknown-unknown`；`scripts/rustenv.sh` 是我們機器上的路徑，換成你的）：
 
 ```bash
-npx hardhat node                      # 終端機 1：本機模擬鏈
-npm run deploy:local                  # 終端機 2：部署合約
-npm run web                           # 終端機 2：http://127.0.0.1:5173/（本機版 local.html）
+cd cw && cargo test -p wage-proof-cw
+bash scripts/cw-build.sh wage-proof-cw     # 輸出 cw/artifacts/*.wasm 與 checksums
 ```
 
-頁面上可一鍵切換「勞工／雇主」，期限可調到 30 秒，並有「快轉 60 秒」按鈕（只在本機鏈有效）。
-
-測試網（領到測試幣後）：
+網頁：
 
 ```bash
-npm run deploy:testnet                # 部署合約到 ME 測試網 EVM（chain id 400）
-npm run memo -- demo/synthetic-report.json --yes   # 保底：指紋寫進交易備註
+node scripts/build-public.mjs   # 產生 public/
 ```
 
-## 檔案
+`api/` 是 Vercel 函式（`demo.mjs` 代簽示範動作、`_cw.mjs` 合約呼叫），需要示範帳號的環境變數，金鑰不在倉庫裡。在測試網重新部署、實跑：`node scripts/cw-settle.mjs`（需要自己的測試網錢包，`npm run wallet` 會產生並寫進被 `.gitignore` 擋掉的 `.env`）。
 
-- `contracts/WageProof.sol`：`submit`、`confirm`、`dispute`、`markExpired` 與查詢
-- `test/WageProof.test.cjs`：合約測試（含期限快轉、越權呼叫被拒）
-- `config/network.json`：所有端點集中在這一份
-- `scripts/`：錢包、端點檢查、ME ID 查詢、雜湊、部署、memo 交易、本機端到端
-- `web/index.html`、`web/app.js`：線上示範頁（測試網）；`web/local.html`、`web/local.js`：本機模擬鏈版
-- `api/rpc.mjs`、`api/demo.mjs`：Vercel 函式（唯讀中繼、代簽示範動作），設定在 `api/_lib.mjs`
-- `scripts/demo-accounts.mjs`：產生／作廢重產／注資線上示範帳號（私鑰只寫 `.env.demo`）
-- `demo/synthetic-report-2.json`：第二份合成報告
+## 前幾版
 
-## 授權
+- `contracts/WageProof.sol`：第一天在 ME 測試網 EVM 部署的 Solidity 版（`0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0`）。EVM 合約查不到 ME ID，所以改走 CosmWasm。
+- CosmWasm code id 21（`me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc`）：沒有補發功能的前一版，18 筆紀錄留在原地。
 
-MIT。本作品不構成法律意見；鏈上紀錄在勞資調解中的法律效力未經查證。
+## 授權與示範資料
+
+MIT。`demo/` 的兩份報告是手寫的合成資料，人名、公司、金額都是虛構的；測試網 ME ID 是官方水龍頭發的模擬身分。本作品不構成法律意見。
