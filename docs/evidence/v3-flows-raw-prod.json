@@ -1,0 +1,109 @@
+{
+  "api": [
+    {
+      "req": {
+        "action": "submit",
+        "reportHash": "0x1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db",
+        "deadlineSeconds": 60,
+        "employer": "verified",
+        "claimTwd": 523
+      },
+      "status": 200,
+      "j": {
+        "ok": true,
+        "action": "submit",
+        "signer": "me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl",
+        "txHash": "2B8C52B036EF712BD0C9C20AF8740F9D07175C3CC4AF23586D8D849128EFA152",
+        "verifyUrl": "https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/2B8C52B036EF712BD0C9C20AF8740F9D07175C3CC4AF23586D8D849128EFA152",
+        "blockNumber": 5354290,
+        "meId": {
+          "rule": "contract: employer ME ID level >= one",
+          "enforcedBy": "contract",
+          "minEmployerLevel": "one",
+          "employer": {
+            "choice": "verified",
+            "ok": true,
+            "address": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+            "level": "two",
+            "label": "進階驗證 Advanced",
+            "kycLevel": "KYC_LEVEL_TWO",
+            "status": "DID_STATUS_ACTIVE",
+            "did": "2611108677483",
+            "source": "found",
+            "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+            "checkedAt": "2026-11-16T16:16:04.600Z"
+          },
+          "worker": {
+            "ok": true,
+            "address": "me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl",
+            "level": "none",
+            "label": "未驗證 None",
+            "kycLevel": null,
+            "status": "DID not found",
+            "did": null,
+            "source": "not_found",
+            "queryUrl": "https://beta-hub-1317.explorer-testnet.me/metaearth/did/did?address=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl",
+            "checkedAt": "2026-11-16T16:16:04.601Z"
+          }
+        },
+        "id": 12,
+        "levelsStoredOnChain": {
+          "employer": "two",
+          "worker": "none"
+        },
+        "claim": "523000",
+        "claimTwd": 523,
+        "status": "pending"
+      }
+    },
+    {
+      "req": {
+        "action": "confirm",
+        "id": 12
+      },
+      "status": 200,
+      "j": {
+        "ok": true,
+        "action": "confirm",
+        "signer": "me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf",
+        "txHash": "B4E811C325EBB3431ED0023874A6D4830D90C9B70CC491C56839A69CA907DA6C",
+        "verifyUrl": "https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/B4E811C325EBB3431ED0023874A6D4830D90C9B70CC491C56839A69CA907DA6C",
+        "blockNumber": 5354292,
+        "id": 12,
+        "levelsStoredOnChain": {
+          "employer": "two",
+          "worker": "none"
+        },
+        "claim": "523000",
+        "settled": "523000",
+        "status": "confirmed"
+      }
+    }
+  ],
+  "log": [
+    "== A: 補發 ==",
+    "shot W1_B0-1440",
+    "geo W1 {\"vw\":1440,\"submit\":{\"top\":653,\"bottom\":705,\"h\":52,\"inView\":true},\"confirm\":null,\"expire\":null,\"scrollY\":0,\"cjkWorker\":83,\"cjkBoss\":35,\"sw\":1440}",
+    "shot W1-390",
+    "geo W1-390 {\"vw\":390,\"submit\":{\"top\":708,\"bottom\":760,\"h\":52,\"inView\":true},\"confirm\":null,\"expire\":null,\"scrollY\":0,\"cjkWorker\":83,\"cjkBoss\":null,\"sw\":390,\"small\":[]}",
+    "shot B0-390",
+    "shot W2-1440",
+    "shot W2-390",
+    "api submit id=12 -> HTTP 200 ok=true tx=2B8C52B036EF712BD0C9C20AF8740F9D07175C3CC4AF23586D8D849128EFA152 block=5354290 settled= code= contractError=",
+    "shot W3_B1-arrive-1440",
+    "shot W3_B1-1440",
+    "geo B1 {\"vw\":1440,\"submit\":null,\"confirm\":{\"top\":581,\"bottom\":633,\"h\":52,\"inView\":true},\"expire\":null,\"scrollY\":0,\"cjkWorker\":57,\"cjkBoss\":75,\"sw\":1440}",
+    "shot W3-390",
+    "shot B1-390",
+    "geo B1-390 {\"vw\":390,\"submit\":null,\"confirm\":{\"top\":587,\"bottom\":639,\"h\":52,\"inView\":true},\"expire\":null,\"scrollY\":0,\"cjkWorker\":null,\"cjkBoss\":75,\"sw\":390,\"small\":[]}",
+    "shot B2-1440",
+    "api confirm id=12 -> HTTP 200 ok=true tx=B4E811C325EBB3431ED0023874A6D4830D90C9B70CC491C56839A69CA907DA6C block=5354292 settled=523000 code= contractError=",
+    "clicks from open to paid: 2",
+    "shot W4paid_B3-1440",
+    "shot W4paid-receipt-1440",
+    "balance line: 你的帳戶0.62175 → 0.62698 MEC補發前後各讀一次餘額：多了 0.00523 MEC",
+    "shot W4paid-390",
+    "geo W4paid-390 {\"vw\":390,\"submit\":null,\"confirm\":null,\"expire\":null,\"scrollY\":0,\"cjkWorker\":57,\"cjkBoss\":null,\"sw\":390,\"small\":[\"交易 2B8C52…A152:41\",\"交易 B4E811…DA6C:41\",\"看合約回傳:41\"]}",
+    "shot B3paid-390"
+  ]
+}

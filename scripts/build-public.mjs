@@ -12,7 +12,8 @@ const FILES = [
   ["web/app.js", "app.js"],
   ["demo/synthetic-report.json", "demo/synthetic-report.json"],
   ["demo/synthetic-report-2.json", "demo/synthetic-report-2.json"],
-  ["web/fonts/Geist-Variable.woff2", "fonts/Geist-Variable.woff2"],
+  ["web/fonts/NotoSansTC-subset.woff2", "fonts/NotoSansTC-subset.woff2"],
+  ["web/fonts/NotoSansTC-OFL.txt", "fonts/NotoSansTC-OFL.txt"],
   ["web/fonts/GeistMono-Variable.woff2", "fonts/GeistMono-Variable.woff2"],
   ["web/fonts/Geist-OFL.txt", "fonts/Geist-OFL.txt"],
 ];

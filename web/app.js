@@ -1,604 +1,684 @@
-// Online demo screen (CosmWasm contract on ME testnet Hub). Reads ONLY from chain, straight from Hub REST
-// (contract smart queries, block time, tx search); writes go through /api/demo, where the server signs with
-// two testnet-only demo accounts. The screen never decides a status: it shows what the contract returns.
+// wage-proof demo v3: two phones (worker, boss) + a strip of what happened on ME Network.
+// Reads come straight from the ME testnet Hub REST (contract queries, txs, balances, ME ID).
+// Writes go through POST /api/demo, where the server signs with two testnet-only demo accounts after
+// simulating the call; the CONTRACT decides what is allowed. The page never invents a status.
 (() => {
 "use strict";
 const $ = (id) => document.getElementById(id);
-const ST = { pending: 1, confirmed: 2, disputed: 3, expired: 4 };
-const STATUS = ["—", "等待回應", "雇主確認", "雇主異議", "逾期未回應"];
-const LV = { two: "進階驗證", one: "真人驗證", none: "未驗證", err: "查詢失敗", wait: "查詢中…" };
-const LV_RANK = { none: 0, one: 1, two: 2 };
-const REPORTS = ["/demo/synthetic-report.json", "/demo/synthetic-report-2.json"];
-const LIST_MAX = 30;
-const ERR_ZH = {
-  EmployerNotVerified: "指定的雇主沒有達到合約要求的 ME ID 等級",
-  NotEmployer: "只有這筆紀錄指定的雇主能回應",
-  NotPending: "這筆已經結案，不能再改",
-  DeadlinePassed: "已過期限，雇主不能再回應",
-  DeadlineNotPassed: "期限還沒到，還不能記為逾期",
-  NoSuchRecord: "沒有這筆紀錄",
-  BadWindow: "期限不在合約允許範圍",
-  ZeroHash: "指紋不能是全 0",
-  BadHash: "指紋格式不對",
-  BadEmployer: "雇主地址不合法",
-  MeIdLookupFailed: "合約查不到 ME ID 模組，為了安全直接拒絕",
-  WrongSettlement: "雇主附的金額和勞工主張的不一樣，合約要剛好相等",
-  WrongSettlementDenom: "雇主附的不是 MEC，合約只收 MEC",
-  SettlementMissing: "這筆有主張補發金額，雇主確認時必須同時付款",
-  UnexpectedFunds: "這個動作不能附帶付款，避免錢卡在合約裡",
-};
-const VIEWS = [["all", "全部"], [1, "等待回應"], [2, "雇主確認"], [3, "雇主異議"], [4, "逾期未回應"]];
-
-let info, reportHash = null, employerChoice = "verified", windowSecs = 60;
-let clockOffset = 0, lastBlock = null;   // chain time - local time (seconds); latest block seen
-let records = [], total = 0, loaded = false;
-let view = "all", sel = null, mode = "detail", panelOpen = false, submitting = null;
-const reports = new Map();               // hash (no 0x) -> report summary
-const txByRecord = new Map();            // id -> { status, list: [{action, label, hash, height, time, fee, signer}] }
-let refreshing = false, again = false, timer = null;
-
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const short = (a, h = 8, t = 6) => (a ? `${a.slice(0, h)}…${a.slice(-t)}` : "—");
-const nt = (n) => `NT$${Number(n).toLocaleString("en-US")}`;
-// umec -> "0.00523 MEC" (1 MEC = 10^8 umec, from the chain's denom metadata)
-const mec = (umec) => `${(Number(umec) / 10 ** (info?.settle?.mecDecimals ?? 8)).toFixed(8).replace(/\.?0+$/, "")} MEC`;
-const claimOf = (twd) => Number(twd) * (info?.settle?.umecPerTwd ?? 1000);
-const RATE_NOTE = () => `示範換算：NT$1＝${mec(claimOf(1))}，非真實匯率`;
-const txUrl = (h) => `${info.hubRest}/cosmos/tx/v1beta1/txs/${h}`;
-const b64 = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-const smartUrl = (q) => `${info.hubRest}/cosmwasm/wasm/v1/contract/${info.contract}/smart/${encodeURIComponent(b64(q))}`;
-const chainNow = () => Date.now() / 1000 + clockOffset;
-const ext = (href, text) => `<a href="${esc(href)}" target="_blank" rel="noopener">${text}</a>`;
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const two = (n) => String(n).padStart(2, "0");
 const hms = (s) => { const d = new Date(s * 1000); return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`; };
-const mdhm = (s) => { const d = new Date(s * 1000); return `${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
-const isNarrow = () => window.matchMedia("(max-width: 960px)").matches;
+const hm = (s) => { const d = new Date(s * 1000); return `${two(d.getHours())}:${two(d.getMinutes())}`; };
+const short = (a, h = 6, t = 4) => (a ? `${a.slice(0, h)}…${a.slice(-t)}` : "");
+const ntd = (n) => `NT$${Number(n).toLocaleString("en-US")}`;
+const amtHtml = (n, cls = "amt") => `<p class="${cls}"><small>NT$</small>${Number(n).toLocaleString("en-US")}</p>`;
+const num = (n) => Number(n).toLocaleString("en-US");
+const clockText = (s) => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${two(m)}:${two(x)}` : `${m}:${two(x)}`; };
+const isNarrow = () => window.matchMedia("(max-width: 1023px)").matches;
 
-async function getJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
+// ---------- icons (Lucide shapes, ISC license) ----------
+const svg = (p, sw = 2) => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const SHIELD = '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>';
+const I = {
+  check: () => svg('<path d="M20 6 9 17l-5-5"/>', 2.6),
+  clock: () => svg('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'),
+  flag: () => svg('<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>'),
+  ext: () => svg('<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'),
+  copy: () => svg('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'),
+  shieldOk: () => svg(SHIELD + '<path d="m9 12 2 2 4-4"/>'),
+  shieldNo: () => svg(SHIELD + '<path d="m14.5 9.5-5 5"/><path d="m9.5 9.5 5 5"/>'),
+  arrow: () => svg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
+  alert: () => svg('<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'),
+  user: () => svg('<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+  store: () => svg('<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>'),
+  chev: () => svg('<path d="m6 9 6 6 6-6"/>'),
+  lock: () => svg('<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  inbox: () => svg('<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'),
+};
+const ext = (href, text) => `<a class="ext" href="${esc(href)}" target="_blank" rel="noopener">${text}${I.ext()}</a>`;
+
+// ---------- words ----------
+const LV = { two: "進階驗證", one: "真人驗證", none: "沒有 ME ID", err: "查不到", wait: "查詢中" };
+const UNVERIFIED_NAME = "範例小吃店";
+const CONTRACT_ZH = {
+  EmployerNotVerified: "這家公司沒有 ME ID，合約不收",
+  NotEmployer: "只有補薪單上的老闆能回覆",
+  NotPending: "這張已經處理過了",
+  DeadlinePassed: "已經過了回覆期限，老闆不能再回覆",
+  DeadlineNotPassed: "還沒到期限，還不能記為逾期",
+  NoSuchRecord: "鏈上找不到這張補薪單",
+  BadWindow: "回覆期限不在合約允許的範圍",
+  WrongSettlement: "補發金額跟補薪單上的不一樣，合約不收",
+  WrongSettlementDenom: "合約只收 MEC",
+  SettlementMissing: "補發時一定要同時付款",
+  UnexpectedFunds: "這個動作不能附帶付款",
+  MeIdLookupFailed: "合約查不到 ME ID，為了安全直接拒絕",
+};
+function plain(j, http) {
+  if (http === 0) return "連不上伺服器。請檢查網路，再按一次。";
+  if (j.code === "contract_rejected" || j.code === "employer_not_verified") return `合約拒絕：${CONTRACT_ZH[j.contractError] || "不符合合約規則"}。沒有送出，也沒有花手續費。`;
+  if (j.code === "rate_limited") { const w = String(j.message || "").match(/請 (\d+) 秒/); return `按太快了。請等 ${w ? w[1] : 60} 秒再按。`; }
+  if (j.code === "daily_limit") return "今天的示範次數用完了，明天會重置。";
+  if (j.code === "out_of_funds") return "示範帳號的測試幣用完了。";
+  if (j.code === "not_configured") return "示範伺服器還沒設定好。";
+  if (j.code === "upstream_error") return "ME Network 節點暫時沒有回應。請再按一次。";
+  return "沒有送出。請再按一次。";
+}
+
+// ---------- state ----------
+const STATUS_N = { pending: 1, confirmed: 2, disputed: 3, expired: 4 };
+const MINE_KEY = "wageproof.v3.mine", REASON_KEY = "wageproof.v3.reasons";
+const REPORT_FILES = ["/demo/synthetic-report.json", "/demo/synthetic-report-2.json"];
+let info = null;
+const reports = [];
+const levels = {};                 // address -> "two" | "one" | "none" | "err" | "wait"
+let clockOffset = 0;               // chain time minus local time, seconds
+const S = {
+  rep: 0, emp: "verified", win: 60,
+  phase: "loading",                // loading | draft | sending | blocked | waiting | due | marking | done | fatal
+  sendAt: 0, sendStep: 0, sendErr: null, blocked: null,
+  rec: null, txs: {},              // my current record and its txs by action
+  boss: { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false },
+  workerErr: null, bal: { before: null, after: null },
+  view: "worker", toldBoss: false, showFour: false,
+  ev: [], evLocal: [], evTotal: null, count: null, fresh: new Set(), evErr: false,
+};
+
+const readJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const writeJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
+const mine = () => readJson(MINE_KEY, []);
+const remember = (id) => writeJson(MINE_KEY, [...mine().filter((x) => x !== id), id].slice(-20));
+const reasonOf = (id) => readJson(REASON_KEY, {})[id];
+const keepReason = (id, text) => { const r = readJson(REASON_KEY, {}); r[id] = text; writeJson(REASON_KEY, r); };
+
+// ---------- chain reads ----------
+async function getJson(url, opts) {
+  const res = await fetch(url, { cache: "no-store", ...opts });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.message || `HTTP ${res.status}`);
+  if (!res.ok) { const e = new Error(body?.message || `HTTP ${res.status}`); e.body = body; throw e; }
   return body;
 }
+const smartUrl = (q) => `${info.hubRest}/cosmwasm/wasm/v1/contract/${info.contract}/smart/${encodeURIComponent(btoa(JSON.stringify(q)))}`;
+const txUrl = (h) => `${info.hubRest}/cosmos/tx/v1beta1/txs/${h}`;
 const query = async (q) => (await getJson(smartUrl(q))).data;
+const chainNow = () => Date.now() / 1000 + clockOffset;
+const decimals = () => info?.settle?.mecDecimals ?? 8;
+const mec = (umec, dp = 5) => (Number(umec) / 10 ** decimals()).toFixed(dp);
+const twdOf = (umec) => Math.round(Number(umec) / (info?.settle?.umecPerTwd ?? 1000));
 
-function dur(s) {
-  s = Math.max(0, Math.round(s));
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
-  if (h) return `${h} 小時${m ? ` ${m} 分` : ""}`;
-  return m ? `${m} 分${x ? ` ${x} 秒` : ""}` : `${x} 秒`;
+async function syncClock() {
+  const b = await getJson(`${info.hubRest}/cosmos/base/tendermint/v1beta1/blocks/latest`);
+  clockOffset = Date.parse(b.block.header.time) / 1000 - Date.now() / 1000;
 }
-function clockText(s) {
-  s = Math.max(0, Math.ceil(s));
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
-  return h ? `${h}:${two(m)}:${two(x)}` : `${m}:${two(x)}`;
+async function balance() {
+  const j = await getJson(`${info.hubRest}/cosmos/bank/v1beta1/balances/${info.worker}`);
+  return Number(j.balances.find((b) => b.denom === (info.settle?.denom || "umec"))?.amount ?? 0);
 }
-
-// ---------- who is who ----------
-function nameOf(addr) {
-  if (!info) return short(addr, 10, 6);
-  if (addr === info.worker) return "示範勞工";
-  if (addr === info.employer) return "示範雇主";
-  if (addr === info.employers?.unverified) return "沒有 ME ID 的地址";
-  return short(addr, 10, 6);
-}
-const AV = { 示範勞工: ["勞", "#d0d6e0"], 示範雇主: ["雇", "#aab1c0"], "沒有 ME ID 的地址": ["？", "#62666d"] };
-function avatar(addr) {
-  const [ch, bg] = AV[nameOf(addr)] || ["地", "#8a8f98"];
-  return `<span class="av" style="background:${bg}" aria-hidden="true">${ch}</span>`;
-}
-
-// ---------- status icons (Linear grammar: shape + colour + text) ----------
-function icon(eff, p = 0) {
-  if (eff === 1) {
-    const a = clamp01(p) * Math.PI * 2;
-    const x = (8 + 3.6 * Math.sin(a)).toFixed(2), y = (8 - 3.6 * Math.cos(a)).toFixed(2);
-    const pie = p >= 0.995 ? `<circle cx="8" cy="8" r="3.6" fill="#f2c94c"/>`
-      : p <= 0.005 ? "" : `<path d="M8 8V4.4A3.6 3.6 0 ${a > Math.PI ? 1 : 0} 1 ${x} ${y}Z" fill="#f2c94c"/>`;
-    return `<svg class="i pie" viewBox="0 0 16 16" role="img" aria-label="等待回應"><circle cx="8" cy="8" r="6.3" fill="none" stroke="#f2c94c" stroke-width="1.5"/>${pie}</svg>`;
-  }
-  if (eff === 2) return `<svg class="i" viewBox="0 0 16 16" role="img" aria-label="雇主確認"><circle cx="8" cy="8" r="7" fill="#4cb782"/><path d="M5 8.2l2 2 4-4.2" fill="none" stroke="#0f1011" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  if (eff === 3) return `<svg class="i" viewBox="0 0 16 16" role="img" aria-label="雇主異議"><circle cx="8" cy="8" r="7" fill="#eb5757"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="#0f1011" stroke-width="1.7" stroke-linecap="round"/></svg>`;
-  return `<svg class="i" viewBox="0 0 16 16" role="img" aria-label="逾期未回應"><circle cx="8" cy="8" r="6.3" fill="none" stroke="#8a8f98" stroke-width="1.5"/><path d="M8 4.8V8l2.2 1.4" fill="none" stroke="#8a8f98" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-}
-const progress = (r) => clamp01((chainNow() - r.submitted_at) / (r.deadline - r.submitted_at));
-
-// ---------- ME ID level, read straight from ME testnet Hub REST ----------
-// Same mapping as the contract: active DID + KYC_LEVEL_TWO = Advanced, KYC_LEVEL_ONE = Real-person,
-// "DID not found" = None, anything else = lookup failed (never guessed).
-const levels = new Map();
-const meIdUrl = (me1) => `${info.hubRest}/metaearth/did/did?address=${encodeURIComponent(me1)}`;
-async function queryLevel(me1) {
-  const url = meIdUrl(me1);
+async function loadLevel(addr) {
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    const body = await res.json().catch(() => null);
-    const i = body?.info;
-    if (res.ok && i?.did) {
-      const lv = i.status === "DID_STATUS_ACTIVE" ? ({ KYC_LEVEL_TWO: "two", KYC_LEVEL_ONE: "one" }[i.kycLevel] || "none") : "none";
-      return { state: lv, raw: `${i.kycLevel ?? "未提供等級"}，${i.status ?? ""}`, url };
-    }
-    if (String(body?.message || "").includes("DID not found")) return { state: "none", raw: "DID not found", url };
-    return { state: "err", raw: `節點回 HTTP ${res.status}`, url };
-  } catch (e) { return { state: "err", raw: `連不上 Hub：${e.message}`, url }; }
-}
-function levelOf(me1) {
-  const c = levels.get(me1);
-  if (!c || (!c.pending && Date.now() - c.at > 30000)) {
-    levels.set(me1, { state: c && c.state !== "err" ? c.state : "wait", raw: c?.raw, at: Date.now(), url: meIdUrl(me1), pending: true });
-    queryLevel(me1).then((r) => { levels.set(me1, { ...r, at: Date.now() }); renderSide(); renderPanel(); });
-  }
-  return levels.get(me1);
+    const res = await fetch(`${info.hubRest}/metaearth/did/did?address=${encodeURIComponent(addr)}`, { cache: "no-store" });
+    const b = await res.json().catch(() => null);
+    if (res.ok && b?.info?.did) levels[addr] = b.info.status === "DID_STATUS_ACTIVE" ? ({ KYC_LEVEL_TWO: "two", KYC_LEVEL_ONE: "one" }[b.info.kycLevel] || "none") : "none";
+    else levels[addr] = String(b?.message || "").includes("DID not found") ? "none" : "err";
+  } catch { levels[addr] = "err"; }
 }
 
-// ---------- reports ----------
 async function loadReports() {
-  for (const url of REPORTS) {
+  for (const url of REPORT_FILES) {
     const raw = new Uint8Array(await (await fetch(url, { cache: "no-store" })).arrayBuffer());
     const r = JSON.parse(new TextDecoder().decode(raw));
     const d = await crypto.subtle.digest("SHA-256", raw);
-    const h = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    const f = r.findings[0];
-    reports.set(h, {
-      url, period: r.period, employer: r.employer.displayName.replace("（虛構）", ""), worker: r.worker.displayName.replace("（虛構）", ""),
-      wage: r.hourlyWageTWD, item: { "overtime hours": "加班", "rest-day work": "休息日出勤" }[f.item] || f.item,
-      att: Number(f.attendance), pay: Number(f.payslip), diff: Number(f.differenceHours), short: f.estimatedShortfallTWD,
+    const hash = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const f = r.findings[0], month = Number(r.period.slice(5, 7)), rest = f.item === "rest-day work";
+    reports.push({
+      hash, url, month, rest,
+      employer: r.employer.displayName.replace("（虛構）", ""), worker: r.worker.displayName.replace("（虛構）", ""),
+      wage: r.hourlyWageTWD, att: Number(f.attendance), pay: Number(f.payslip), diff: Number(f.differenceHours), short: f.estimatedShortfallTWD,
+      why: rest ? `休息日出勤 ${f.differenceHours} 小時沒有算` : `加班少算 ${f.differenceHours} 小時`,
+      bossWhy: rest ? `${month} 月休息日出勤少算 ${f.differenceHours} 小時` : `${month} 月加班少算 ${f.differenceHours} 小時`,
+      swap: rest ? `換一份範例（休息日出勤 ${ntd(f.estimatedShortfallTWD)}）` : `換回範例（加班 ${ntd(f.estimatedShortfallTWD)}）`,
     });
-    if (!reportHash) reportHash = h;
   }
 }
-// attendance record vs payslip, drawn to the same scale; the hatched part is what the payslip left out
-function bars(rep) {
-  const max = Math.max(rep.att, rep.pay, 1), aw = (rep.att / max) * 100, pw = (rep.pay / max) * 100;
-  return `<div class="cmp">
-    <span class="lab">出勤紀錄</span><div class="bar"><span class="a" style="width:${aw}%"></span></div><span class="val">${rep.att} 小時</span>
-    <span class="lab">薪資單</span><div class="bar">${pw > 0 ? `<span class="p" style="width:${pw}%"></span>` : ""}<span class="g" style="left:${pw}%;width:${aw - pw}%"></span></div><span class="val">${rep.pay} 小時</span>
-  </div>`;
-}
-function titleOf(r) {
-  const rep = reports.get(r.report_hash);
-  return rep ? { t: `${rep.item}少算`, s: rep.employer, rep } : { t: "部署時的測試紀錄", s: "只有指紋，沒有報告檔", rep: null };
-}
+const repOfRec = (rec) => reports.find((r) => r.hash === rec?.report_hash) || null;
 
-// ---------- reading the chain ----------
-async function loadTxs(r) {
-  const c = txByRecord.get(r.id);
-  if (c && c.status === r.status && c.full) return;
-  const url = `${info.hubRest}/cosmos/tx/v1beta1/txs?events=${encodeURIComponent(`wasm._contract_address='${info.contract}'`)}&events=${encodeURIComponent(`wasm.id='${r.id}'`)}`;
+// my record: status straight from the contract (effective_status turns pending into expired after the deadline)
+async function loadRecord(id) {
+  const rec = await query({ record: { id } });
+  const eff = rec.status === "pending" ? await query({ effective_status: { id } }) : rec.status;
+  S.rec = { ...rec, eff: STATUS_N[eff] };
+  const i = reports.findIndex((r) => r.hash === rec.report_hash);
+  if (i >= 0) S.rep = i;
+  if (rec.status !== "pending") S.phase = "done";
+  else if (S.phase !== "marking") S.phase = S.rec.eff === 4 ? "due" : "waiting";
+}
+async function loadTxs(id) {
+  const url = `${info.hubRest}/cosmos/tx/v1beta1/txs?events=${encodeURIComponent(`wasm._contract_address='${info.contract}'`)}&events=${encodeURIComponent(`wasm.id='${id}'`)}`;
   const j = await getJson(url);
-  const name = { submit: "登記", confirm: "雇主確認", dispute: "雇主異議", mark_expired: "記為逾期" };
-  const list = [];
+  const txs = {};
   for (const t of j.tx_responses || []) {
     if (t.code !== 0) continue;
-    const ev = (t.logs?.[0]?.events || []).find((e) => e.type === "wasm");
-    const attr = (k) => ev?.attributes.find((a) => a.key === k)?.value;
-    if (Number(attr("id")) !== r.id) continue;
-    const fee = t.tx?.auth_info?.fee?.amount?.find((a) => a.denom === "umec")?.amount;
-    const settled = attr("settled") ?? "0";
-    list.push({ action: attr("action"), label: attr("action") === "confirm" && settled !== "0" ? "雇主確認並補發" : name[attr("action")] || attr("action"),
-      hash: t.txhash, height: Number(t.height), time: Date.parse(t.timestamp) / 1000, fee: fee ? Number(fee) / 1e8 : null,
-      signer: t.tx?.body?.messages?.[0]?.sender, settled });
+    const a = attrs(t);
+    if (Number(a.id) !== id) continue;
+    const fee = t.tx?.auth_info?.fee?.amount?.find((x) => x.denom === "umec")?.amount;
+    txs[a.action] = { hash: t.txhash, height: Number(t.height), time: Date.parse(t.timestamp) / 1000, fee: fee ? Number(fee) : null, settled: a.settled };
   }
-  list.sort((a, b) => a.height - b.height);
-  txByRecord.set(r.id, { status: r.status, list, full: true });
+  if (S.rec?.id === id) S.txs = txs;
+}
+function attrs(t) {
+  const ev = (t.logs?.[0]?.events || t.events || []).find((e) => e.type === "wasm");
+  return Object.fromEntries((ev?.attributes || []).map((a) => [a.key, a.value]));
 }
 
-async function refresh() {
-  if (refreshing) { again = true; return; }
-  refreshing = true;
-  again = false;
+// evidence strip: the contract's latest real transactions, newest first
+const WHO = { submit: "勞工", confirm: "老闆", dispute: "老闆", mark_expired: "勞工", instantiate: "部署者" };
+function rowOf(t) {
+  const a = attrs(t), id = a.id;
+  const base = { hash: t.txhash, height: Number(t.height), time: Date.parse(t.timestamp) / 1000, who: WHO[a.action] || "—", mine: id && mine().includes(Number(id)) };
+  switch (a.action) {
+    case "submit": return { ...base, what: `送出補薪單 #${id}`, sub: `合約查老闆 ME ID：${LV[a.employer_level] || a.employer_level}，通過` };
+    case "confirm": return a.settled && a.settled !== "0"
+      ? { ...base, what: `老闆補發 #${id}`, sub: `合約轉 ${mec(a.settled)} MEC 給勞工` }
+      : { ...base, what: `老闆確認 #${id}`, sub: "這張沒有要求金額" };
+    case "dispute": return { ...base, what: `老闆有異議 #${id}`, sub: "理由的指紋上鏈，沒有付款" };
+    case "mark_expired": return { ...base, what: `記為逾期 #${id}`, sub: "老闆在期限內沒有回覆" };
+    case "instantiate": return { ...base, what: "部署合約", sub: `規定老闆的 ME ID 至少要「${LV[a.min_employer_level] || a.min_employer_level}」` };
+    default: return { ...base, what: a.action || "交易", sub: "" };
+  }
+}
+async function loadEvidence() {
   try {
-    const latest = await getJson(`${info.hubRest}/cosmos/base/tendermint/v1beta1/blocks/latest`);
-    clockOffset = Date.parse(latest.block.header.time) / 1000 - Date.now() / 1000;
-    lastBlock = { height: Number(latest.block.header.height), at: Date.now() };
-    $("live").className = "livestat"; $("liveM").className = "livestat";
-    const [list, count] = await Promise.all([query({ list: { limit: LIST_MAX } }), query({ count: {} })]);
-    total = count;
-    records = await Promise.all(list.map(async (r) => {
-      const eff = r.status === "pending" ? await query({ effective_status: { id: r.id } }).catch(() => r.status) : r.status;
-      return { ...r, stored: ST[r.status], eff: ST[eff] };
-    }));
-    loaded = true;
-    if (sel == null || !records.some((r) => r.id === sel)) sel = defaultSel();
-    render();
-    const want = new Set([sel, ...records.filter((r) => r.stored === 1).map((r) => r.id)]);
-    await Promise.all(records.filter((r) => want.has(r.id)).map((r) => loadTxs(r).catch(() => {})));
-    render();
-  } catch (e) {
-    $("live").className = "livestat bad"; $("liveM").className = "livestat bad";
-    $("liveText").textContent = "讀不到鏈上資料，稍後自動重試";
-    $("liveM").textContent = "連線中斷，自動重試";
-    if (!loaded) $("rows").innerHTML = `<p class="empty"><b>讀不到 ME Network 測試網。</b><br>可能是節點暫時沒有回應（${esc(e.message)}）。這頁每幾秒會自動重試，不用重新整理。</p>`;
-  } finally {
-    refreshing = false;
-    clearTimeout(timer);
-    timer = setTimeout(refresh, again ? 0 : records.some((r) => r.stored === 1) ? 5000 : 20000);
-  }
-}
-function defaultSel() {
-  const known = records.filter((r) => reports.has(r.report_hash));
-  return (known.find((r) => r.eff === 1) || records.find((r) => r.eff === 1) || known[0] || records[0])?.id ?? null;
+    const url = `${info.hubRest}/cosmos/tx/v1beta1/txs?events=${encodeURIComponent(`wasm._contract_address='${info.contract}'`)}&limit=6&page=1&order_by=2`;
+    const [j, count] = await Promise.all([getJson(url), query({ count: {} }).catch(() => S.count)]);
+    S.ev = (j.tx_responses || []).filter((t) => t.code === 0).map(rowOf);
+    S.evTotal = Number(j.total ?? j.pagination?.total ?? S.ev.length);
+    S.count = count;
+    S.evErr = false;
+  } catch { S.evErr = true; }
+  renderEvidence();
 }
 
-// ---------- writing (server signs with demo accounts) ----------
-const busy = new Set();
-const dis = (a, id) => (busy.has(`${a}:${id}`) ? " disabled" : "");
-const LABEL = { submit: "登記", confirm: "確認", dispute: "異議", markExpired: "記為逾期" };
-
-function toast(kind, html) {
-  const t = $("toast");
-  t.hidden = false;
-  t.innerHTML = `${kind === "busy" ? `<span class="spin" aria-hidden="true"></span>` : icon(kind === "ok" ? 2 : 3)}<div>${html}</div><button class="btn ghost" type="button" aria-label="關閉通知">關閉</button>`;
-  t.querySelector("button").onclick = () => { t.hidden = true; };
-}
-
-async function callDemo(body) {
-  const key = `${body.action}:${body.id}`;
-  busy.add(key);
-  const started = Date.now();
-  if (body.action === "submit") { submitting = { started }; renderPanel(true); }
-  else { renderPanel(true); toast("busy", `${LABEL[body.action]} #${body.id}：伺服器先在節點上模擬合約，再簽名送出，等出塊約 5～10 秒`); }
+// ---------- writes (server signs with demo accounts; the contract decides) ----------
+async function post(body) {
   try {
     const res = await fetch("/api/demo", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    const j = await res.json().catch(() => ({}));
-    const secs = ((Date.now() - started) / 1000).toFixed(1);
-    if (j.ok) {
-      const id = j.id ?? body.id;
-      txByRecord.delete(id);
-      if (body.action === "submit") { sel = id; mode = "detail"; view = "all"; }
-      const paid = body.action === "confirm" && j.settled && j.settled !== "0" ? `同一筆交易補發 <b>${esc(mec(j.settled))}</b> 給勞工。` : "";
-      toast("ok", `${LABEL[body.action]}成功，紀錄 #${id} 現在是「${esc(STATUS[ST[j.status]] || j.status || "—")}」。${paid}寫入區塊 <span class="mono">${Number(j.blockNumber).toLocaleString("en-US")}</span>，花了 ${secs} 秒。<br>${ext(j.verifyUrl, `交易 <code>${esc(short(j.txHash, 6, 4))}</code>`)}`);
-    } else if (body.action === "submit") {
-      submitting = { error: j, http: res.status };
-    } else if (j.code === "employer_not_verified" || j.code === "contract_rejected") {
-      toast("no", `合約拒絕了${LABEL[body.action]}：${esc(ERR_ZH[j.contractError] || "合約規則不允許")}（<code>${esc(j.contractError)}</code>）。沒有送出交易，也沒有花手續費。`);
-    } else {
-      toast("no", `${LABEL[body.action]}沒有送出：${esc(plainError(j, res.status))}`);
-    }
-  } catch (e) {
-    if (body.action === "submit") submitting = { error: { message: e.message }, http: 0 };
-    else toast("no", `${LABEL[body.action]}沒有送出：連不上伺服器，請檢查網路後再按一次。`);
-  } finally {
-    busy.delete(key);
-    if (submitting && !submitting.error) submitting = null;
-    renderPanel(true);
-    refresh();
-  }
+    return { http: res.status, j: await res.json().catch(() => ({})) };
+  } catch { return { http: 0, j: {} }; }
 }
-function plainError(j, http) {
-  if (j.code === "rate_limited") return j.message || "按太快了，請稍等一分鐘再試。";
-  if (j.code === "daily_limit") return "今天的示範次數用完了，明天會重置。";
-  if (j.code === "out_of_funds") return "示範帳號的測試幣用完了，請通知我們補幣。";
-  if (j.code === "not_configured") return "伺服器的示範帳號沒有設定好。";
-  if (http === 0) return "連不上伺服器，請檢查網路後再按一次。";
-  return j.message || `伺服器回應 HTTP ${http}`;
-}
+let localSeq = 0;
+function addLocal(row) { const r = { key: `l${++localSeq}`, time: chainNow(), ...row }; S.evLocal.unshift(r); S.fresh.add(r.key); renderEvidence(); return r.key; }
+function dropLocal(key) { S.evLocal = S.evLocal.filter((r) => r.key !== key); }
 
-// ---------- rendering: sidebar ----------
-function counts() {
-  const n = { all: records.length, 1: 0, 2: 0, 3: 0, 4: 0 };
-  for (const r of records) n[r.eff]++;
-  return n;
-}
-const VIEW_ICON = { all: `<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>` };
-function renderSide() {
-  if (!info) return;
-  const n = counts();
-  const btn = (v, t) => `<button type="button" data-view="${v}" aria-current="${String(view) === String(v)}">${VIEW_ICON[v] || icon(v, 0.5)}${t}<span class="n">${loaded ? n[v] : "–"}</span></button>`;
-  $("nav").innerHTML = VIEWS.map(([v, t]) => btn(v, t)).join("");
-  $("chips").innerHTML = VIEWS.map(([v, t]) => `<button type="button" data-view="${v}" aria-current="${String(view) === String(v)}">${t}<span class="mono">${loaded ? n[v] : "–"}</span></button>`).join("");
-  const ids = [[info.worker, "示範勞工"], [info.employer, "示範雇主"], [info.employers?.unverified, "沒有 ME ID 的地址"]];
-  $("who").innerHTML = ids.filter(([a]) => a).map(([a, t]) => {
-    const c = levelOf(a);
-    const role = a === info.worker ? "登記人" : c.state === "none" ? "合約會拒絕" : "合約接受";
-    return `<div>${avatar(a)}<b>${t}</b><span class="${a !== info.worker && c.state === "none" ? "no" : ""}">ME ID ${esc(LV[c.state])}・${role}</span></div>`;
-  }).join("");
-  $("total").textContent = loaded ? `${total}` : "";
-}
-
-// ---------- rendering: list ----------
-function rowHtml(r) {
-  const { t, s, rep } = titleOf(r);
-  let due;
-  if (r.eff === 1) due = `<span class="due hot" data-left="${r.deadline}">${clockText(r.deadline - chainNow())}</span>`;
-  else if (r.eff === 4) due = `<span class="due">${r.stored === 1 ? "待記逾期" : "未回應"}</span>`;
-  else due = `<span class="due">${dur(r.closed_at - r.submitted_at)}回應</span>`;
-  return `<div class="row" role="option" tabindex="0" data-id="${r.id}" aria-selected="${sel === r.id && mode === "detail"}">
-    ${r.eff === 1 ? icon(1, progress(r)).replace('class="i pie"', `class="i pie" data-s="${r.submitted_at}" data-d="${r.deadline}"`) : icon(r.eff)}
-    <span class="id">#${r.id}</span>
-    <span class="t">${esc(t)}<small>${esc(s)}</small></span>
-    ${rep ? `<span class="amt">${nt(rep.short)}</span>` : `<span class="amt none">—</span>`}
-    ${due}
-    <span class="when">${mdhm(r.submitted_at)}</span></div>`;
-}
-function renderList() {
-  if (!loaded) return;
-  const shown = records.filter((r) => view === "all" || r.eff === Number(view));
-  const open = shown.filter((r) => r.eff === 1), closed = shown.filter((r) => r.eff !== 1);
-  const grp = (label, list, ic) => list.length ? `<div class="grp">${ic}${label}<span class="mono">${list.length}</span></div>${list.map(rowHtml).join("")}` : "";
-  const noOpen = view === "all" && !open.length && shown.length
-    ? `<div class="grp">${icon(1, 0)}等待雇主回應<span class="mono">0</span></div><p class="empty line">按「登記報告」、期限選 60 秒，新紀錄會出現在這裡倒數</p>` : "";
-  let html = noOpen + grp("等待雇主回應", open, icon(1, 0.5)) + grp("已結案", closed, `<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="#62666d" stroke-width="1.5"/></svg>`);
-  if (!shown.length) {
-    html = view === 1 || view === "1"
-      ? `<p class="empty"><b>現在沒有等雇主回應的紀錄。</b><br>按右上角「登記報告」登記一筆，期限選 60 秒，它就會出現在這裡，倒數結束前可以換雇主身分回應。</p>`
-      : `<p class="empty"><b>這個分類目前沒有紀錄。</b><br>切回「全部」可以看合約裡最近 ${records.length} 筆。</p>`;
-  }
-  if (total > records.length) html += `<p class="empty">只顯示最近 ${records.length} 筆，合約裡共 ${total} 筆。</p>`;
-  const stable = html.replace(/<svg class="i pie"[\s\S]*?<\/svg>/g, "").replace(/(data-left="\d+">)[^<]*/g, "$1");
-  if (stable === listKey) return;
-  listKey = stable;
-  const box = $("rows"), fid = document.activeElement?.closest?.(".row")?.dataset.id;
-  box.innerHTML = html;
-  if (fid) box.querySelector(`.row[data-id="${fid}"]`)?.focus();
-}
-
-// ---------- rendering: panel ----------
-let panelKey = "", listKey = "";
-function renderPanel(force = false) {
-  if (!info) return;
-  const p = $("panel");
-  p.classList.toggle("open", panelOpen);
-  const r = records.find((x) => x.id === sel);
-  const tx = txByRecord.get(sel);
-  const key = [mode, sel, r?.eff, r?.stored, tx?.list.length, [...busy].join(), JSON.stringify(submitting && !submitting.started ? submitting : !!submitting),
-    reportHash, employerChoice, windowSecs, [...levels.values()].map((l) => l.state).join()].join("|");
-  const typing = p.contains(document.activeElement) && document.activeElement.tagName === "INPUT";
-  if (!force && key === panelKey) return;
-  if (!force && typing && key.split("|").slice(0, 4).join() === panelKey.split("|").slice(0, 4).join()) return;
-  panelKey = key;
-  const keep = {}; for (const el of p.querySelectorAll("input[type=text], input:not([type])")) keep[el.id] = el.value;
-  const focused = document.activeElement?.id;
-  p.innerHTML = mode === "new" ? composerHtml() : mode === "tools" ? toolsHtml() : r ? detailHtml(r) : `<div class="pb"><p class="empty">${loaded ? "從左邊選一筆紀錄。" : "讀取鏈上紀錄中…"}</p></div>`;
-  for (const [k, v] of Object.entries(keep)) if (k && $(k)) $(k).value = v;
-  if (focused && $(focused) && p.contains($(focused))) $(focused).focus();
-}
-const closeBtn = () => `<button class="btn ghost x" type="button" data-close aria-label="關閉">${isNarrow() ? "返回列表" : "關閉"}</button>`;
-
-function detailHtml(r) {
-  const { rep } = titleOf(r);
-  const win = r.deadline - r.submitted_at;
-  const mine = r.employer === info.employer;
-  let clock, act = "";
-  if (r.eff === 1) {
-    const p = progress(r);
-    clock = `<div class="clock"><span class="big p" data-left="${r.deadline}" data-fmt="clock">${clockText(r.deadline - chainNow())}</span><small>後到期（回應期限 ${dur(win)}）</small></div>
-      <div class="track live" style="--c:#f2c94c" data-s="${r.submitted_at}" data-d="${r.deadline}"><span style="width:${p * 100}%"></span></div>`;
-    const owe = r.claim && r.claim !== "0";
-    act = mine ? `<div class="act"><p>換成<b>示範雇主</b>的身分回應（ME ID ${esc(LV[levelOf(info.employer).state])}）。${owe
-        ? `差額屬實就確認，同一筆交易從雇主帳號付 <b>${esc(mec(r.claim))}</b>，合約轉給勞工；金額不對合約會拒絕。`
-        : "差額屬實就確認。"}不同意就寫一句理由，鏈上只存理由的指紋，不付款。</p>
-      <div class="r"><button class="btn" type="button" data-a="confirm" data-id="${r.id}"${dis("confirm", r.id)}>${icon(2)}${owe ? `確認並補發 ${esc(mec(r.claim))}` : "確認這筆差額"}</button></div>
-      <label for="reason-${r.id}">不同意的理由</label>
-      <div class="r"><input class="field" id="reason-${r.id}" maxlength="200" placeholder="例如：那 2 小時是自願留下，不算加班">
-      <button class="btn" type="button" data-a="dispute" data-id="${r.id}"${dis("dispute", r.id)}>${icon(3)}提出異議</button></div>
-      <p class="ferr" id="rerr-${r.id}" role="alert" hidden></p></div>`
-      : `<div class="act"><p>這筆指定的雇主不是示範帳號，只有那個地址能回應。</p></div>`;
-  } else if (r.eff === 4) {
-    clock = `<div class="clock"><span class="big" style="color:var(--ink-2)">逾期未回應</span><small>期限 ${dur(win)} 內雇主沒有回應</small></div>
-      <div class="track" style="--c:#8a8f98"><span style="width:100%"></span></div>`;
-    if (r.stored === 1) act = `<div class="act"><p>期限已過，雇主沒有回應。任何人都能把它記為逾期，這一步也會寫上鏈，之後就不能再改。</p>
-      <div class="r"><button class="btn" type="button" data-a="markExpired" data-id="${r.id}"${dis("markExpired", r.id)}>${icon(4)}記為逾期</button></div></div>`;
+async function submit() {
+  const rep = reports[S.rep];
+  if (!info || !rep || S.phase !== "draft") return;
+  const toBad = S.emp === "unverified";
+  S.phase = "sending"; S.sendAt = Date.now(); S.sendStep = 1; S.sendErr = null; S.blocked = null;
+  render();
+  const pend = addLocal({ who: "勞工", what: "送出補薪單", sub: "寫上 ME Network 中", pend: true });
+  setTimeout(() => { if (S.phase === "sending") { S.sendStep = 2; renderWorker(); } }, 450);
+  setTimeout(() => { if (S.phase === "sending") { S.sendStep = 3; renderWorker(); } }, 2200);
+  const { http, j } = await post({ action: "submit", reportHash: "0x" + rep.hash, deadlineSeconds: S.win, employer: S.emp, claimTwd: rep.short });
+  dropLocal(pend);
+  if (j.ok) {
+    remember(j.id);
+    S.fresh.add(j.txHash);
+    S.txs = { submit: { hash: j.txHash, height: j.blockNumber, time: chainNow() } };
+    S.boss = { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false };
+    S.bal = { before: null, after: null }; S.workerErr = null; S.toldBoss = false;
+    try { await loadRecord(j.id); } catch { S.rec = { id: j.id, status: "pending", eff: 1, claim: j.claim, report_hash: rep.hash, submitted_at: chainNow(), deadline: chainNow() + S.win }; S.phase = "waiting"; }
+    render();
+    arrive();
+    loadTxs(j.id).then(renderWorker).catch(() => {});
+    loadEvidence();
+    poll();
+  } else if (j.code === "employer_not_verified") {
+    S.phase = "blocked"; S.blocked = j; S.showFour = true;
+    addLocal({ who: "合約", what: "合約拒絕：老闆沒有 ME ID", sub: "伺服器先模擬，合約不收，所以沒有送出", rej: true, link: j.rejectProofUrl });
+    render();
   } else {
-    const at = r.closed_at - r.submitted_at, p = clamp01(at / win), c = r.eff === 2 ? "#4cb782" : "#eb5757";
-    clock = `<div class="clock"><span class="big" style="color:${c}">${STATUS[r.eff]}</span><small>登記後 ${dur(at)} 回應（期限 ${dur(win)}）</small></div>
-      <div class="track" style="--c:${c}"><span style="width:${p * 100}%"></span><i style="left:${p * 100}%"></i></div>`;
+    S.phase = "draft"; S.sendErr = toBad && http === 0 ? plain(j, http) : plain(j, http);
+    renderEvidence(); render();
   }
-  const tx = txByRecord.get(r.id);
-  const trail = (tx?.list || []).map((t) => `<li><span class="dot">${t.action === "submit" ? `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="#d0d6e0"/></svg>` : icon({ confirm: 2, dispute: 3, mark_expired: 4 }[t.action] || 4)}</span>
-    <div><b>${esc(t.label)}</b>　<span class="m">由 ${esc(nameOf(t.signer))} 簽名</span>
-    <div class="m">區塊 <span class="mono">${t.height.toLocaleString("en-US")}</span>・${hms(t.time)}${t.fee != null ? `・手續費 <span class="mono">${t.fee.toFixed(4)}</span> MEC` : ""}</div>
-    ${t.action === "submit" ? `<div class="m">合約查到雇主 ME ID「${esc(LV[r.employer_level] || r.employer_level)}」，達到要求，寫進這筆紀錄${r.claim && r.claim !== "0" ? `；勞工主張補發 ${esc(mec(r.claim))}` : ""}</div>` : ""}
-    ${t.action === "confirm" && t.settled !== "0" ? `<div class="m">補發 <span class="mono">${esc(mec(t.settled))}</span> 給勞工：雇主付款、合約轉出，同一筆交易完成</div>` : ""}
-    <div class="m">${ext(txUrl(t.hash), `交易 <code>${esc(short(t.hash, 6, 4))}</code>`)}</div></div></li>`).join("");
-  const waiting = r.eff === 1 ? `<li><span class="dot"></span><div><b style="color:var(--ink-3)">等待雇主回應</b><div class="m">期限 ${hms(r.deadline)}</div></div></li>` : "";
-  return `<div class="ph">${icon(r.eff, r.eff === 1 ? progress(r) : 0)}<span>${STATUS[r.eff]}</span><span class="mono">#${r.id}</span>${closeBtn()}</div>
-  <div class="pb">
-    <h2>${rep ? `${esc(rep.employer)}：${esc(rep.item)}少算 ${nt(rep.short)}` : "部署時的測試紀錄"}</h2>
-    <p class="lead">${rep ? `${esc(rep.period)}・${esc(rep.worker)}・時薪 ${nt(rep.wage)}・示範資料，人名與公司皆為虛構` : "部署合約時的測試紀錄，沒有對應的報告檔，鏈上只有指紋"}</p>
-    ${clock}
-    <div class="ends"><span>登記 ${hms(r.submitted_at)}</span><span>期限 ${hms(r.deadline)}</span></div>
-    ${act}
-    ${rep ? `<div class="sec"><h3>出勤紀錄對薪資單<small>${esc(rep.item)}・時薪 ${nt(rep.wage)}</small></h3>${bars(rep)}
-      <div class="owed"><span>薪資單少算 ${rep.diff} 小時，估計少付</span><b>${nt(rep.short)}</b></div></div>` : ""}
-    <div class="sec"><h3>這筆紀錄在鏈上的樣子</h3><dl class="props">
-      <dt>雇主</dt><dd>${avatar(r.employer)}${esc(nameOf(r.employer))}<span class="tag ${r.employer_level === "none" ? "no" : "ok"}">登記時 ME ID ${esc(LV[r.employer_level] || r.employer_level)}</span></dd>
-      <dt>勞工</dt><dd>${avatar(r.worker)}${esc(nameOf(r.worker))}</dd>
-      <dt>主張補發</dt><dd>${r.claim && r.claim !== "0" ? `<span class="mono">${esc(mec(r.claim))}</span>${rep ? `<span class="tag">${nt(rep.short)} 示範換算</span>` : ""}` : "沒有主張金額"}</dd>
-      <dt>結算</dt><dd>${settleText(r)}</dd>
-      <dt>報告指紋</dt><dd><code title="${esc(r.report_hash)}">${esc(short(r.report_hash, 16, 8))}</code></dd>
-      <dt>報告本身</dt><dd>沒有上鏈，留在勞工手上${rep ? `（${ext(rep.url, "示範報告檔")}）` : ""}</dd>
-      <dt>合約查詢</dt><dd>${ext(smartUrl({ record: { id: r.id } }), "直接看合約回傳的原始資料")}</dd></dl></div>
-    <div class="sec"><h3>鏈上交易<small>${tx ? `${tx.list.length} 筆` : "讀取中"}</small></h3>
-      ${tx || waiting ? `<ol class="trail">${trail}${waiting}</ol>` : `<p class="empty" style="padding:0">讀取交易中…</p>`}</div>
-  </div>`;
 }
 
-function settleText(r) {
-  if (!r.claim || r.claim === "0") return "不涉及付款";
-  if (r.settled && r.settled !== "0") return `已補發 <span class="mono">${esc(mec(r.settled))}</span> 給勞工`;
-  return `未結算・${{ 1: "等雇主確認", 3: "雇主異議，沒有付款", 4: "逾期，沒有付款" }[r.eff] || ""}`;
-}
-
-function composerHtml() {
-  const opts = [...reports.entries()].map(([h, rep]) => `<label class="opt"><input type="radio" name="rep" value="${h}" ${h === reportHash ? "checked" : ""}>
-    <span class="t">${esc(rep.period)}　${esc(rep.employer)}<b>${nt(rep.short)}</b></span>
-    <span class="s">${esc(rep.worker)}・${esc(rep.item)}・時薪 ${nt(rep.wage)}・${ext(rep.url, "報告檔")}</span>${bars(rep)}</label>`).join("");
-  const min = info.minEmployerLevel || "one";
-  const emp = [["verified", "示範雇主"], ["unverified", "沒有 ME ID 的地址"]].map(([k, t]) => {
-    const a = info.employers?.[k];
-    const c = levelOf(a);
-    const known = c.state !== "wait" && c.state !== "err";
-    const rank = LV_RANK[c.state] ?? -1, ok = rank >= LV_RANK[min];
-    const left = `calc(${LV_RANK[min]} * 24px - 1px)`;
-    return `<label class="opt ${known && !ok ? "below" : ""}"><input type="radio" name="emp" value="${k}" ${employerChoice === k ? "checked" : ""}>
-      <span class="emp-opt"><span class="t">${t}</span>
-      <span class="gate">${known ? `<span class="steps" aria-hidden="true">${[0, 1, 2].map((i) => `<span class="${i <= rank ? "on" : ""}"></span>`).join("")}<i style="left:${left}"></i></span>
-        <small>ME ID ${esc(LV[c.state])}・${ok ? "達到合約要求" : "合約會拒絕"}</small>` : `<small style="color:var(--ink-3)">${esc(LV[c.state])}</small>`}</span>
-      <span class="a">${esc(a)}</span></span></label>`;
-  }).join("");
-  let note = "";
-  if (submitting?.started) note = `<div class="note"><div class="prog"><span class="spin" aria-hidden="true"></span><span>伺服器正在節點上模擬合約、用示範勞工帳號簽名、等待出塊。已經 <span class="mono" data-since="${submitting.started}">0</span> 秒，通常 5～10 秒。</span></div></div>`;
-  else if (submitting?.error) {
-    const j = submitting.error;
-    if (j.code === "employer_not_verified") {
-      const m = j.meId;
-      note = `<div class="note no"><b>合約拒絕了這次登記，沒有產生紀錄。</b><br>合約自己向 ME Network 查了雇主地址：${m ? `ME ID「${esc(LV[m.employer.level] || "查詢失敗")}」，低於合約要求的「${esc(LV[m.minEmployerLevel] || m.minEmployerLevel)}」` : "沒有達到合約要求的等級"}。伺服器改不了這條規則。<br>
-        合約原文：<code>${esc(j.contractMessage || j.contractError)}</code><br>${ext(j.rejectProofUrl, "看同樣的拒絕真的上過鏈的那筆交易")}</div>`;
-    } else if (j.code === "contract_rejected") {
-      note = `<div class="note no"><b>合約拒絕：${esc(ERR_ZH[j.contractError] || "合約規則不允許")}。</b>沒有送出交易。<br><code>${esc(j.contractError)}</code></div>`;
-    } else note = `<div class="note no"><b>沒有送出。</b>${esc(plainError(j, submitting.http))}</div>`;
+async function confirmPay() {
+  const rec = S.rec;
+  if (!rec || S.boss.busy || S.phase !== "waiting") return;
+  S.boss.busy = "confirm"; S.boss.at = Date.now(); S.boss.err = null;
+  render();
+  const pend = addLocal({ who: "老闆", what: `老闆補發 #${rec.id}`, sub: "寫上 ME Network 中", pend: true });
+  let before = null;
+  try { before = await balance(); } catch { /* shown as unknown */ }
+  const { http, j } = await post({ action: "confirm", id: rec.id });
+  dropLocal(pend);
+  if (j.ok) {
+    let after = null;
+    try { after = await balance(); } catch { /* shown as unknown */ }
+    S.bal = { before, after };
+    S.fresh.add(j.txHash);
+    S.txs.confirm = { hash: j.txHash, height: j.blockNumber, time: chainNow(), settled: j.settled };
+    await afterBossAction(rec.id);
+  } else {
+    S.boss.busy = null; S.boss.err = plain(j, http);
+    if (j.contractError === "DeadlinePassed" || j.contractError === "NotPending") await loadRecord(rec.id).catch(() => {});
+    render(); renderEvidence();
   }
-  const busyNow = !!submitting?.started;
-  return `<div class="ph"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="#d0d6e0" stroke-width="1.6" stroke-linecap="round"/></svg><span>登記一份比對報告</span>${closeBtn()}</div>
-  <div class="pb">
-    <span class="flabel">報告（示範資料，報告本身不上鏈）</span>
-    <div class="opts" id="repOpts">${opts || `<p class="empty" style="padding:0">示範報告讀取失敗，請重新整理。</p>`}</div>
-    <p class="hint">上鏈的只有這份報告的 SHA-256 指紋：<code>${esc(reportHash || "—")}</code></p>
-    ${reports.get(reportHash) ? `<span class="flabel">補發金額</span>
-    <div class="owed"><span>主張補發 ${nt(reports.get(reportHash).short)}（示範換算）</span><b style="white-space:nowrap">${esc(mec(claimOf(reports.get(reportHash).short)))}</b></div>
-    <p class="hint">${RATE_NOTE()}。雇主確認時要同時付這個金額，合約轉給勞工；異議或逾期不付款。</p>` : ""}
-    <span class="flabel">雇主回應期限</span>
-    <div class="seg" role="radiogroup" aria-label="雇主回應期限">${[[30, "30 秒"], [60, "60 秒"], [3600, "1 小時"]].map(([v, t]) =>
-      `<label><input type="radio" name="win" value="${v}" ${windowSecs === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
-    <p class="hint">示範用短期限，60 秒就能看到雇主回應或逾期。</p>
-    <span class="flabel">指定雇主（合約會向 ME Network 查他的 ME ID）</span>
-    <div class="opts" id="empOpts">${emp}</div>
-    <div class="submit"><button class="btn primary lg" type="button" id="submitBtn"${busyNow || !reportHash ? " disabled" : ""}>${busyNow ? "登記中…" : "登記這份報告"}</button>
-      <p>伺服器用示範勞工帳號代簽，不用錢包、不用測試幣</p></div>
-    ${note}
-  </div>`;
 }
 
-function toolsHtml() {
-  return `<div class="ph"><span>規則與 ME ID 查詢</span>${closeBtn()}</div>
-  <div class="pb">
-    <h2>合約怎麼用 ME ID 和 MEC</h2>
-    <p class="lead">登記時，合約自己向 ME Network 的身分模組查雇主地址；等級不到就拒絕，查到的等級寫進紀錄。雇主確認有主張金額的紀錄時，必須在同一筆交易附上剛好那個金額的 MEC，合約直接轉給勞工；少付、多付、沒付都會被拒絕。這些規則寫在合約裡，網頁和伺服器都改不了。</p>
-    <dl class="props">
-      <dt>雇主最低等級</dt><dd><span class="tag ok">ME ID ${esc(LV[info.minEmployerLevel] || "—")}</span>${ext(smartUrl({ config: {} }), "看合約設定")}</dd>
-      <dt>合約地址</dt><dd><code title="${esc(info.contract)}">${esc(short(info.contract, 12, 6))}</code></dd>
-      <dt>部署交易</dt><dd>${ext(txUrl(info.instTx), `<code>${esc(short(info.instTx, 8, 4))}</code>`)}</dd>
-      <dt>拒絕紀錄</dt><dd>${ext(txUrl(info.rejectProofTx), `<code>${esc(short(info.rejectProofTx, 8, 4))}</code>`)}　合約退回沒有 ME ID 的雇主</dd>
-      <dt>補發幣別</dt><dd>MEC（鏈上單位 <code>${esc(info.settle?.denom || "umec")}</code>，1 MEC＝10<sup>8</sup> umec）<br>${RATE_NOTE()}</dd>
-      <dt>網路</dt><dd>ME Network 測試網 <code>${esc(info.chainId)}</code>・CosmWasm code ${esc(info.codeId)}</dd>
-      ${info.legacy?.contract ? `<dt>舊合約</dt><dd>${ext(`${info.hubRest}/cosmwasm/wasm/v1/contract/${info.legacy.contract}/smart/${encodeURIComponent(b64({ list: { limit: 30 } }))}`, "舊合約紀錄")}（code ${esc(info.legacy.codeId)}，沒有補發功能，紀錄原樣保留）</dd>` : ""}
-    </dl>
-    <div class="sec"><h3>查任一地址的 ME ID</h3>
-      <div class="lookup"><input class="field" id="meidAddr" placeholder="貼上 me1 開頭的地址" autocomplete="off" spellcheck="false" aria-label="me1 地址">
-      <button class="btn" type="button" id="meidBtn">查詢</button></div>
-      <p id="meidOut" aria-live="polite"></p>
-      <p class="hint">直接問測試網節點，和合約看到的是同一份資料。</p></div>
-    <p class="foot-note">示範資料：報告裡的人名、公司、金額全部虛構。資料寫在 ME Network 測試網，測試幣沒有價值；測試網的 ME ID 是官方提供的模擬身分，不代表真實的法律身分驗證。原型作品，不構成法律意見。字型 Geist（SIL Open Font License）。</p>
-  </div>`;
+async function dispute() {
+  const rec = S.rec;
+  if (!rec || S.boss.busy || S.phase !== "waiting") return;
+  const text = S.boss.reason.trim();
+  if (!text) { S.boss.reasonErr = true; renderBoss(); $("reason")?.focus(); return; }
+  S.boss.busy = "dispute"; S.boss.at = Date.now(); S.boss.err = null; S.boss.reasonErr = false;
+  render();
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  const reasonHash = "0x" + [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join("");
+  const pend = addLocal({ who: "老闆", what: `老闆有異議 #${rec.id}`, sub: "寫上 ME Network 中", pend: true });
+  const { http, j } = await post({ action: "dispute", id: rec.id, reasonHash });
+  dropLocal(pend);
+  if (j.ok) {
+    keepReason(rec.id, text);
+    S.fresh.add(j.txHash);
+    S.txs.dispute = { hash: j.txHash, height: j.blockNumber, time: chainNow() };
+    await afterBossAction(rec.id);
+  } else {
+    S.boss.busy = null; S.boss.err = plain(j, http);
+    if (j.contractError === "DeadlinePassed" || j.contractError === "NotPending") await loadRecord(rec.id).catch(() => {});
+    render(); renderEvidence();
+  }
 }
 
-function render() {
+async function afterBossAction(id) {
+  try { await loadRecord(id); } catch { S.phase = "done"; }
+  S.boss.busy = null; S.showFour = true;
+  render();
+  loadTxs(id).then(() => { renderWorker(); renderBoss(); }).catch(() => {});
+  loadEvidence();
+}
+
+async function markExpired() {
+  const rec = S.rec;
+  if (!rec || S.phase !== "due") return;
+  S.phase = "marking"; S.workerErr = null; S.boss.at = Date.now();
+  render();
+  const pend = addLocal({ who: "勞工", what: `記為逾期 #${rec.id}`, sub: "寫上 ME Network 中", pend: true });
+  const { http, j } = await post({ action: "markExpired", id: rec.id });
+  dropLocal(pend);
+  if (j.ok) {
+    S.fresh.add(j.txHash);
+    S.txs.mark_expired = { hash: j.txHash, height: j.blockNumber, time: chainNow() };
+    S.phase = "due";
+    await afterBossAction(rec.id);
+  } else {
+    S.phase = "due"; S.workerErr = plain(j, http);
+    await loadRecord(rec.id).catch(() => {});
+    render(); renderEvidence();
+  }
+}
+
+function fresh() {
+  S.openReceipt = false;
+  S.phase = "draft"; S.rec = null; S.txs = {}; S.sendErr = null; S.blocked = null; S.workerErr = null;
+  S.bal = { before: null, after: null }; S.boss = { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false };
+}
+
+// poll my open record so the countdown, expiry and the other phone stay in step with the chain
+let polling = false;
+async function poll() {
+  if (polling || !S.rec || !["waiting", "due"].includes(S.phase) || S.boss.busy) return;
+  polling = true;
+  const before = `${S.phase}|${S.rec.status}|${S.rec.eff}`;
+  try {
+    await syncClock().catch(() => {});
+    await loadRecord(S.rec.id);
+    if (`${S.phase}|${S.rec.status}|${S.rec.eff}` !== before) {
+      if (S.phase === "done") { S.showFour = true; await loadTxs(S.rec.id).catch(() => {}); loadEvidence(); }
+      render();
+    }
+  } catch { /* try again next round */ }
+  polling = false;
+}
+
+// ---------- worker phone ----------
+function bars(rep) {
+  const max = Math.max(rep.att, rep.pay, 1), aw = (rep.att / max) * 100, pw = (rep.pay / max) * 100;
+  return `<div class="bars" role="img" aria-label="出勤 ${rep.att} 小時，薪資單 ${rep.pay} 小時，少算 ${rep.diff} 小時">
+    <span>出勤</span><svg aria-hidden="true"><rect width="${aw}%" height="12" rx="6" fill="#0e0f0c"/></svg><span class="v">${rep.att} 小時</span>
+    <span>薪資單</span><svg aria-hidden="true"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="#d03238"/></pattern></defs>
+      <rect width="${aw}%" height="12" rx="6" fill="url(#hatch)"/>${pw > 0 ? `<rect width="${pw}%" height="12" rx="6" fill="#0e0f0c"/>` : ""}</svg><span class="v">${rep.pay} 小時</span>
+  </div>`;
+}
+function levelBadge(addr, okText) {
+  const lv = levels[addr] || "wait";
+  if (lv === "one" || lv === "two") return `<span class="badge ok">${I.shieldOk()}${okText || "ME ID 已驗證"}</span>`;
+  if (lv === "none") return `<span class="badge no">${I.shieldNo()}沒有 ME ID</span>`;
+  return `<span class="badge wait">ME ID ${LV[lv]}</span>`;
+}
+function receipt(rec) {
+  if (!rec) return "";
+  const t = S.txs, row = (k, who) => t[k] ? `${who}簽名・區塊 <span class="mono">${num(t[k].height)}</span>${t[k].fee ? `・手續費 <span class="mono">${mec(t[k].fee, 4)}</span> MEC` : ""}<br>${ext(txUrl(t[k].hash), `交易 <span class="mono">${short(t[k].hash)}</span>`)}` : "";
+  const reply = t.confirm ? ["補發", row("confirm", "老闆")] : t.dispute ? ["異議", row("dispute", "老闆")] : t.mark_expired ? ["逾期", row("mark_expired", "勞工")] : null;
+  return `<details class="receipt"${S.openReceipt ? " open" : ""}><summary>鏈上收據 ${I.chev()}</summary><dl class="kv">
+    <dt>補薪單</dt><dd class="mono">#${rec.id}</dd>
+    <dt>送出</dt><dd>${row("submit", "勞工") || "讀取中…"}</dd>
+    ${reply ? `<dt>${reply[0]}</dt><dd>${reply[1]}</dd>` : ""}
+    <dt>老闆 ME ID</dt><dd>${esc(LV[rec.employer_level] || rec.employer_level || "—")}（送出當下合約查的）</dd>
+    ${rec.claim && rec.claim !== "0" ? `<dt>要求補發</dt><dd><span class="mono">${mec(rec.claim)}</span> MEC（示範換算）</dd>` : ""}
+    <dt>報告指紋</dt><dd class="mono" title="${esc(rec.report_hash)}">${short(rec.report_hash, 12, 8)}</dd>
+    <dt>原始資料</dt><dd>${ext(smartUrl({ record: { id: rec.id } }), "看合約回傳")}</dd>
+  </dl></details>`;
+}
+
+function workerHtml() {
+  const rep = reports[S.rep];
+  if (S.phase === "fatal") return `<div class="alert"><h3>${I.alert()}示範伺服器沒有回應</h3><p>請稍後重新整理這一頁。</p></div>`;
+  if (!rep) return `<p class="why">讀取中…</p>`;
+  const top = `<h3 class="title">${rep.month} 月薪水少算了</h3>${amtHtml(rep.short)}<p class="why">${esc(rep.why)}</p>`;
+
+  if (S.phase === "loading" || S.phase === "draft") {
+    const unv = S.emp === "unverified";
+    const to = unv ? info?.employers?.unverified : info?.employer;
+    return `${top}${bars(rep)}
+      <div class="field"><span class="lab">送給</span>
+        <div class="to"><b>${unv ? UNVERIFIED_NAME : esc(rep.employer)}</b>${to ? levelBadge(to) : `<span class="badge wait">查詢中</span>`}</div>
+        <button class="link" type="button" data-act="emp">${unv ? "改回已驗證的公司" : "試試看：沒有 ME ID 的公司"}</button></div>
+      <div class="field"><span class="lab" id="winLab">回覆期限</span>
+        <div class="seg" role="radiogroup" aria-labelledby="winLab">${[[30, "30 秒"], [60, "1 分鐘"], [3600, "1 小時"]].map(([v, t]) =>
+          `<label><input type="radio" name="win" value="${v}"${S.win === v ? " checked" : ""}><span>${t}</span></label>`).join("")}</div></div>
+      <button class="link" type="button" data-act="rep">${esc(reports[(S.rep + 1) % reports.length].swap)}</button>
+      <p class="fine">${I.lock()}薪資單和打卡紀錄不上傳，只送指紋。</p>
+      <div class="grow"></div>
+      ${unv ? `<p class="warnline">${I.alert()}合約會擋下這張</p>` : ""}
+      ${S.sendErr ? `<p class="err" role="alert">${esc(S.sendErr)}</p>` : ""}
+      <button class="btn primary" type="button" data-act="submit"${S.phase === "loading" ? " disabled" : ""}>${S.phase === "loading" ? "讀取中…" : `請老闆補發 ${ntd(rep.short)}`}</button>`;
+  }
+
+  if (S.phase === "sending") {
+    const st = (n, text) => `<li class="${S.sendStep > n ? "done" : S.sendStep === n ? "now" : ""}"><span class="dot">${S.sendStep > n ? I.check() : S.sendStep === n ? `<span class="spin"></span>` : ""}</span>${text}</li>`;
+    return `${top}<ol class="steps" aria-live="polite">${st(1, "算出報告的指紋")}${st(2, "寫上 ME Network")}${st(3, `等出塊　<span class="mono" data-since="${S.sendAt}"></span> 秒`)}</ol>
+      <div class="grow"></div><button class="btn primary" type="button" disabled><span class="spin"></span>送出中…</button>`;
+  }
+
+  if (S.phase === "blocked") {
+    const j = S.blocked || {};
+    return `<p class="eyebrow">${I.store()}送給 ${UNVERIFIED_NAME}・${ntd(rep.short)}</p>
+      <div class="alert" role="alert"><h3>${I.shieldNo()}被合約擋下，補薪單沒有送出</h3>
+        <p>這家公司沒有通過 ME ID 真人驗證。</p>
+        <p>合約規定只有真人驗證過的老闆才能收補薪單，避免有人假冒老闆自己按確認。</p>
+        ${j.rejectProofUrl ? ext(j.rejectProofUrl, "看鏈上被拒的那筆交易") : ""}</div>
+      ${j.contractMessage ? `<p class="note">合約原文：<code>${esc(j.contractMessage)}</code></p>` : ""}
+      <div class="grow"></div>
+      <button class="btn primary" type="button" data-act="fixEmp">改送給已驗證的公司</button>`;
+  }
+
+  const rec = S.rec, r = repOfRec(rec) || rep, twd = rec?.claim && rec.claim !== "0" ? twdOf(rec.claim) : r.short;
+  if (["waiting", "due", "marking"].includes(S.phase)) {
+    const due = S.phase !== "waiting";
+    return `<p class="eyebrow">${I.store()}補薪單 #${rec.id}・送給 ${esc(r.employer)}</p>${amtHtml(twd, "amt md")}
+      <ol class="track">
+        <li class="done"><span class="dot">${I.check()}</span><div><b>已送出</b><span class="sub">${hms(rec.submitted_at)}${S.txs.submit ? `・區塊 <span class="mono">${num(S.txs.submit.height)}</span>` : ""}</span></div></li>
+        ${due ? `<li class="late done"><span class="dot">${I.clock()}</span><div><b>老闆沒回應</b><span class="sub">期限 ${hms(rec.deadline)} 已經過了</span></div></li>
+          <li class="${S.phase === "marking" ? "wait" : "todo"}"><span class="dot"></span><div><b>記為逾期</b><span class="sub">寫上鏈之後，老闆就不能再回覆</span></div></li>`
+        : `<li class="wait"><span class="dot">${I.clock()}</span><div><b>等老闆回覆</b><span class="sub"><span class="mono" data-left="${rec.deadline}"></span> 內回覆，過了記為逾期</span></div></li>
+          <li class="todo"><span class="dot"></span><div><b>補發或異議</b></div></li>`}
+      </ol>
+      ${receipt(rec)}
+      <div class="grow"></div>
+      ${S.workerErr ? `<p class="err" role="alert">${esc(S.workerErr)}</p>` : ""}
+      ${S.phase === "waiting" ? `<p class="hint">${I.arrow()}老闆的手機已經收到這張補薪單</p>`
+        : S.phase === "marking" ? `<button class="btn primary" type="button" disabled><span class="spin"></span>寫上 ME Network…</button>`
+        : `<button class="btn primary" type="button" data-act="expire">記為逾期</button>`}`;
+  }
+
+  // done: the result the contract recorded
+  const st = rec?.status;
+  let body;
+  if (st === "confirmed") {
+    const paid = rec.settled && rec.settled !== "0";
+    const b = S.bal;
+    body = `<div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
+      ${paid ? `<p class="why">${mec(rec.settled)} MEC 已轉進你的帳戶（示範換算）</p>
+      <div class="bal"><span class="lab">你的帳戶</span>${b.before != null && b.after != null
+        ? `<span class="mono">${mec(b.before)} → <b>${mec(b.after)}</b> MEC</span><span class="plus">補發前後各讀一次餘額：多了 ${mec(b.after - b.before)} MEC</span>`
+        : `<span class="mono">+ <b>${mec(rec.settled)}</b> MEC</span>`}</div>` : `<p class="why">老闆確認了這筆差額。</p>`}
+      ${S.txs.confirm ? ext(txUrl(S.txs.confirm.hash), "查證這筆補發") : ""}`;
+  } else if (st === "disputed") {
+    const reason = reasonOf(rec.id);
+    body = `<div class="big disputed">${I.flag()}</div><h3 class="res">老闆有異議</h3>
+      ${reason ? `<p class="quote">「${esc(reason)}」</p>` : ""}
+      <p class="why" style="margin-top:12px">理由的指紋已上鏈，可以帶去勞工局調解。</p>
+      ${S.txs.dispute ? ext(txUrl(S.txs.dispute.hash), "查證這筆異議") : ""}`;
+  } else {
+    body = `<div class="big expired">${I.clock()}</div><h3 class="res">已記為逾期</h3>
+      <p class="why" style="margin-top:8px">老闆在期限內沒有回應，已記錄在鏈上。</p>
+      ${S.txs.mark_expired ? ext(txUrl(S.txs.mark_expired.hash), "查證這筆紀錄") : ""}`;
+  }
+  return `<p class="eyebrow">${I.store()}補薪單 #${rec.id}・${esc(r.employer)}</p>${body}${receipt(rec)}
+    <div class="grow"></div><button class="btn second" type="button" data-act="again">再送一張</button>`;
+}
+
+// ---------- boss phone ----------
+function bossHtml() {
+  const rec = S.rec, open = rec && ["waiting", "due", "marking", "done"].includes(S.phase);
+  const r = (open && repOfRec(rec)) || reports[S.rep];
+  const bossAddr = info?.employer;
+  const head = `<div class="btop"><span class="name">${I.store()}<span>${esc(r?.employer || "")}</span></span>${bossAddr ? levelBadge(bossAddr, `你的 ME ID：${LV[levels[bossAddr]] || ""}`) : ""}</div>`;
+  if (!open) {
+    return `${head}<div class="empty">${I.inbox()}<p>目前沒有待處理的補薪單</p><p>${isNarrow() ? "等勞工送出" : "等左邊的勞工送出"}</p></div>`;
+  }
+  const twd = rec.claim && rec.claim !== "0" ? twdOf(rec.claim) : r.short;
+  const intro = `<p class="eyebrow">${I.user()}${esc(r.worker)} 送來一張補薪單・${hm(rec.submitted_at)}</p>${amtHtml(twd)}<p class="why">${esc(r.bossWhy)}</p>`;
+  const lines = `<dl class="lines"><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div><div><dt>時薪</dt><dd>${ntd(r.wage)}</dd></div></dl>`;
+
+  if (S.phase === "waiting") {
+    const b = S.boss, busy = !!b.busy;
+    return `${head}${intro}
+      <p class="due">${I.clock()}<span class="mono" data-left="${rec.deadline}"></span> 內回覆，過了會記為逾期</p>
+      ${lines}<div class="grow"></div>
+      ${b.err ? `<p class="err" role="alert">${esc(b.err)}</p>` : ""}
+      <button class="btn primary" type="button" data-act="confirm"${busy ? " disabled" : ""}>${b.busy === "confirm" ? `<span class="spin"></span>補發中，等出塊 <span class="mono" data-since="${b.at}"></span> 秒` : `補發 ${ntd(twd)}`}</button>
+      ${rec.claim && rec.claim !== "0" ? `<p class="fine c">同一筆交易用 ${mec(rec.claim)} MEC 轉給員工（示範換算）</p>` : ""}
+      ${b.open ? `<div class="dispute"><label for="reason">不同意的理由</label>
+          <input id="reason" maxlength="200" autocomplete="off" placeholder="例如：那 2 小時是自願留下" value="${esc(b.reason)}"${b.reasonErr ? ' aria-invalid="true" aria-describedby="reasonErr"' : ""}${busy ? " disabled" : ""}>
+          ${b.reasonErr ? `<p class="err" id="reasonErr" role="alert" style="margin:0">寫一句理由</p>` : ""}
+          <div class="row"><button class="btn outline" type="button" data-act="dispute"${busy ? " disabled" : ""}>${b.busy === "dispute" ? `<span class="spin"></span>送出中 <span class="mono" data-since="${b.at}"></span> 秒` : "送出異議"}</button>
+          <button class="link" type="button" data-act="closeDispute"${busy ? " disabled" : ""}>取消</button></div>
+          <p class="fine">鏈上只存理由的指紋，不公開內容。</p></div>`
+        : `<button class="link c" type="button" data-act="openDispute"${busy ? " disabled" : ""}>我有異議</button>`}`;
+  }
+  if (S.phase === "due" || S.phase === "marking") {
+    return `${head}${intro}<p class="state" style="color:var(--body)">${I.clock()}已過回覆期限</p>
+      <p class="why" style="margin-top:4px">你沒有在期限內回覆，不能再補發或異議。</p>${lines}<div class="grow"></div>`;
+  }
+  // done
+  const st = rec.status, t = S.txs[st === "confirmed" ? "confirm" : st === "disputed" ? "dispute" : "mark_expired"];
+  const kv = t ? `<dl class="kv" style="margin-top:16px"><dt>時間</dt><dd class="mono">${hms(t.time)}</dd><dt>區塊</dt><dd class="mono">${num(t.height)}</dd><dt>交易</dt><dd>${ext(txUrl(t.hash), `<span class="mono">${short(t.hash)}</span>`)}</dd></dl>` : "";
+  if (st === "confirmed") return `${head}<div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
+    ${rec.settled && rec.settled !== "0" ? `<p class="why">合約把 ${mec(rec.settled)} MEC 轉給員工（示範換算）</p>` : ""}${kv}<div class="grow"></div>`;
+  if (st === "disputed") { const reason = reasonOf(rec.id); return `${head}<div class="big disputed">${I.flag()}</div><h3 class="res">已送出異議</h3>
+    ${reason ? `<p class="quote">「${esc(reason)}」</p>` : ""}<p class="why" style="margin-top:10px">沒有付款。理由的指紋已上鏈。</p>${kv}<div class="grow"></div>`; }
+  return `${head}<div class="big expired">${I.clock()}</div><h3 class="res">這張已逾期</h3><p class="why" style="margin-top:8px">你沒有在期限內回覆，鏈上已記錄。</p>${kv}<div class="grow"></div>`;
+}
+
+// ---------- guide + dock ----------
+const STEPS = [["勞工送出補薪單", "送出"], ["老闆補發或異議", "老闆回覆"], ["看鏈上收據", "看收據"]];
+function guideState() {
+  const nar = isNarrow(), v = S.view;
+  // where the next button is: desktop says left / right; a phone says "below" or names the switch button
+  const go = (side, btn, extra = "") => {
+    if (!nar) return `現在按${side === "worker" ? "左邊" : "右邊"}的「<b>${btn}</b>」${extra}`;
+    if (v === side) return `現在按下面的「<b>${btn}</b>」${extra}`;
+    const dock = side === "boss" ? (S.phase === "waiting" ? "換成老闆看看" : "") : (S.phase === "due" ? "回勞工記為逾期" : "");
+    return dock ? `按下面的「<b>${dock}</b>」` : `先按上方的「${side === "worker" ? "勞工" : "老闆"}」，再按「${btn}」`;
+  };
+  const rep = reports[S.rep];
+  switch (S.phase) {
+    case "loading": return [0, "讀取 ME Network 測試網…"];
+    case "fatal": return [0, "示範伺服器沒有回應，請稍後重新整理。"];
+    case "draft": return S.emp === "unverified"
+      ? [3, go("worker", `請老闆補發 ${ntd(rep.short)}`, "，看合約怎麼擋下")]
+      : [0, go("worker", `請老闆補發 ${ntd(rep.short)}`)];
+    case "sending": return [S.emp === "unverified" ? 3 : 0, "寫上 ME Network 中，大約 5～10 秒…"];
+    case "blocked": return [3, `合約擋下了。${go("worker", "改送給已驗證的公司")}`];
+    case "waiting": {
+      if (S.boss.busy) return [1, "老闆的回覆寫上 ME Network 中…"];
+      const twd = S.rec?.claim && S.rec.claim !== "0" ? twdOf(S.rec.claim) : rep.short;
+      return [1, go("boss", `補發 ${ntd(twd)}`, "，或「我有異議」")];
+    }
+    case "due": return [1, `老闆沒在期限內回覆。${go("worker", "記為逾期")}`];
+    case "marking": return [1, "寫上 ME Network 中…"];
+    case "done": return [2, "完成。打開「鏈上收據」，或試試看 ④"];
+    default: return [0, ""];
+  }
+}
+function renderGuide() {
+  const [cur, text] = guideState();
+  const four = S.showFour || cur === 3;
+  const li = (i, [long, sh]) => `<li class="${i < cur && cur !== 3 ? "done" : i === cur ? "on" : ""}"${i === cur ? ' aria-current="step"' : ""}><span class="n">${i < cur && cur !== 3 ? I.check() : i + 1}</span><span class="long">${long}</span><span class="short">${sh}</span></li>`;
+  const fourLi = four ? `<li class="${cur === 3 ? "on" : ""}"${cur === 3 ? ' aria-current="step"' : ""}>${cur === 3 || !["done", "draft"].includes(S.phase)
+    ? `<span class="n">4</span><span class="long">試試看：沒有 ME ID 的公司</span><span class="short">試擋下</span>`
+    : `<button type="button" data-act="four"><span class="n">4</span><span class="long">試試看：沒有 ME ID 的公司</span><span class="short">試擋下</span></button>`}</li>` : "";
+  $("guide").innerHTML = STEPS.map((s, i) => li(i, s)).join("") + fourLi;
+  $("now").innerHTML = text;
+}
+function renderDock() {
+  const d = $("dock");
+  let btn = "";
+  if (isNarrow()) {
+    if (S.view === "worker" && S.phase === "waiting") btn = `<button class="btn primary" type="button" data-act="view" data-view="boss">換成老闆看看 ${I.arrow()}</button>`;
+    else if (S.view === "boss" && (S.phase === "done" || S.phase === "due")) btn = `<button class="btn primary" type="button" data-act="view" data-view="worker">${S.phase === "due" ? "回勞工記為逾期" : "回勞工看結果"} ${I.arrow()}</button>`;
+  }
+  d.innerHTML = btn; d.hidden = !btn;
+  document.body.classList.toggle("has-dock", !!btn);
+}
+function renderSwitch() {
+  document.body.dataset.view = S.view;
+  $("whoNow").textContent = `現在：${S.view === "worker" ? "勞工" : "老闆"}`;
+  for (const b of document.querySelectorAll(".roles button")) b.setAttribute("aria-selected", String(b.dataset.view === S.view));
+}
+
+// ---------- evidence strip ----------
+function renderEvidence() {
   if (!info) return;
-  renderSide();
-  renderList();
-  renderPanel();
+  $("evhead").innerHTML = `<h2 id="evTitle">鏈上發生了什麼</h2>
+    <span class="meta">合約 <b title="${esc(info.contract)}">${short(info.contract, 9, 6)}</b>
+      <button class="icon-btn" type="button" data-act="copy" aria-label="複製合約地址">${S.copied ? "已複製" : I.copy()}</button>
+      <a href="${esc(smartUrl({ config: {} }))}" target="_blank" rel="noopener">查證${I.ext()}</a></span>
+    <span class="meta total">${S.evTotal != null ? `ME Network 測試網・已完成 <b>${num(S.evTotal)}</b> 筆交易` : "讀取中…"}</span>`;
+  const rows = [...S.evLocal, ...S.ev].sort((a, b) => b.time - a.time).slice(0, 6);
+  const hd = `<div class="evrow hd" role="row"><span role="columnheader">時間</span><span role="columnheader">誰簽</span><span role="columnheader">發生了什麼</span><span role="columnheader" style="text-align:right">區塊</span><span role="columnheader">交易</span></div>`;
+  const body = rows.map((r) => {
+    const id = r.hash || r.key, isFresh = S.fresh.has(id);
+    if (isFresh) setTimeout(() => S.fresh.delete(id), 1300);
+    const link = r.hash ? `<a href="${esc(txUrl(r.hash))}" target="_blank" rel="noopener">${short(r.hash)}${I.ext()}</a>`
+      : r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">被拒交易${I.ext()}</a>` : "";
+    return `<div class="evrow${r.pend ? " pend" : ""}${r.rej ? " rej" : ""}${isFresh ? " fresh" : ""}" role="row">
+      <span class="t" role="cell">${hms(r.time)}</span><span class="who" role="cell">${esc(r.who)}</span>
+      <span class="what" role="cell"><b>${r.pend ? `<span class="spin"></span>` : ""}${esc(r.what)}</b>${r.mine ? `<span class="mine">這個瀏覽器</span>` : ""}<span class="s">${esc(r.sub)}</span></span>
+      <span class="h" role="cell">${r.height ? `區塊 ${num(r.height)}` : r.rej ? "沒有上鏈" : ""}</span><span class="x" role="cell">${link}</span></div>`;
+  }).join("");
+  $("evrows").innerHTML = hd + (body || `<p class="evnote">${S.evErr ? "讀不到 ME Network 測試網，幾秒後自動重試。" : "讀取鏈上交易中…"}</p>`)
+    + (S.evErr && body ? `<p class="evnote">讀不到最新交易，幾秒後自動重試。</p>` : "");
+  $("foot").innerHTML = `<span>ME Network 測試網上的真實交易・示範資料人名公司皆虛構・示範換算非真實匯率</span>
+    <a href="${esc(smartUrl({ list: { limit: 30 } }))}" target="_blank" rel="noopener">所有鏈上紀錄${S.count != null ? `（${num(S.count)} 筆）` : ""}${I.ext()}</a>
+    <details${S.rulesOpen ? " open" : ""} data-rules><summary>合約規則</summary><ul>
+      <li>老闆的 ME ID 至少要「${LV[info.minEmployerLevel] || "真人驗證"}」，不然合約不收補薪單。</li>
+      <li>老闆補發時，要在同一筆交易付剛好的 MEC，合約直接轉給勞工。</li>
+      <li>過了回覆期限，老闆就不能回覆；任何人都能把它記為逾期。</li>
+      <li>上鏈的只有報告和理由的指紋，內容留在自己手上。</li></ul>
+      <a href="${esc(smartUrl({ config: {} }))}" target="_blank" rel="noopener">看合約設定${I.ext()}</a></details>`;
 }
 
+// ---------- render ----------
+let lastW = "", lastB = "";
+const stable = (h) => h.replace(/(data-(?:left|since)="[^"]*">)[^<]*/g, "$1");
+function renderWorker() {
+  const h = workerHtml();
+  if (stable(h) === lastW) return;
+  lastW = stable(h);
+  const el = $("worker"), openR = el.querySelector("details.receipt")?.open;
+  if (openR !== undefined) S.openReceipt = openR;
+  el.innerHTML = h;
+  tick();
+}
+function renderBoss() {
+  const h = bossHtml();
+  if (stable(h) === lastB) return;
+  lastB = stable(h);
+  const el = $("boss"), focused = document.activeElement?.id === "reason";
+  el.innerHTML = h;
+  if (focused && $("reason")) { const i = $("reason"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  tick();
+}
+function render() { renderSwitch(); renderGuide(); renderWorker(); renderBoss(); renderDock(); }
+function arrive() {
+  const b = $("boss");
+  b.classList.remove("arrive"); void b.offsetWidth; b.classList.add("arrive");
+  setTimeout(() => b.classList.remove("arrive"), 700);
+}
+
+let lastPollAt = 0;
 function tick() {
   const now = chainNow();
-  for (const el of document.querySelectorAll("svg.pie[data-s]")) {
-    const s = Number(el.dataset.s), d = Number(el.dataset.d);
-    el.outerHTML = icon(1, clamp01((now - s) / (d - s))).replace('class="i pie"', `class="i pie" data-s="${s}" data-d="${d}"`);
-  }
-  for (const el of document.querySelectorAll(".track.live[data-s]")) {
-    const s = Number(el.dataset.s), d = Number(el.dataset.d);
-    el.querySelector("span").style.width = `${clamp01((now - s) / (d - s)) * 100}%`;
-  }
-  for (const el of document.querySelectorAll("[data-left]")) {
-    const left = Number(el.dataset.left) - now;
-    el.textContent = left > 0 ? clockText(left) : "0:00";
-  }
-  for (const el of document.querySelectorAll("[data-since]")) el.textContent = Math.floor((Date.now() - Number(el.dataset.since)) / 1000);
-  if (lastBlock && !$("live").classList.contains("bad")) {
-    $("liveText").textContent = `區塊 ${lastBlock.height.toLocaleString("en-US")}・${Math.round((Date.now() - lastBlock.at) / 1000)} 秒前`;
-    $("liveM").textContent = `測試網・區塊 ${lastBlock.height.toLocaleString("en-US")}`;
-  }
+  for (const el of document.querySelectorAll("[data-left]")) el.textContent = clockText(Number(el.dataset.left) - now);
+  for (const el of document.querySelectorAll("[data-since]")) el.textContent = Math.max(0, Math.floor((Date.now() - Number(el.dataset.since)) / 1000));
+  if (S.phase === "waiting" && S.rec && now >= S.rec.deadline && Date.now() - lastPollAt > 1500) { lastPollAt = Date.now(); poll(); }
 }
 
 // ---------- events ----------
-function openPanel(m, id) {
-  mode = m;
-  if (id != null) sel = id;
-  panelOpen = true;
-  if (m === "new" && submitting?.error) submitting = null;
-  renderList();
-  renderPanel(true);
-  $("panel").scrollTop = 0;
-}
-async function onPanelClick(e) {
-  if (e.target.closest("[data-close]")) { panelOpen = false; if (mode !== "detail") mode = "detail"; renderList(); renderPanel(true); return; }
-  if (e.target.id === "submitBtn") return callDemo({ action: "submit", reportHash: "0x" + reportHash, deadlineSeconds: windowSecs, employer: employerChoice, claimTwd: reports.get(reportHash)?.short ?? 0 });
-  if (e.target.id === "meidBtn") return lookupMeId();
-  const b = e.target.closest("button[data-a]");
-  if (!b) return;
-  const id = Number(b.dataset.id);
-  if (b.dataset.a === "dispute") {
-    const input = $(`reason-${id}`);
-    const text = (input?.value || "").trim();
-    if (!text) { input?.focus(); input?.setAttribute("aria-invalid", "true");
-      const err = $(`rerr-${id}`); if (err) { err.hidden = false; err.textContent = "請先寫一句不同意的理由。鏈上只會存它的指紋，不會公開內容。"; } return; }
-    const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-    const reasonHash = "0x" + [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join("");
-    return callDemo({ action: "dispute", id, reasonHash });
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  const act = b.dataset.act;
+  if (act === "submit") return submit();
+  if (act === "confirm") return confirmPay();
+  if (act === "dispute") return dispute();
+  if (act === "expire") return markExpired();
+  if (act === "emp") { S.emp = S.emp === "verified" ? "unverified" : "verified"; if (S.emp === "unverified") S.showFour = true; S.sendErr = null; }
+  else if (act === "rep") { S.rep = (S.rep + 1) % reports.length; S.sendErr = null; }
+  else if (act === "fixEmp") { S.emp = "verified"; S.phase = "draft"; S.blocked = null; }
+  else if (act === "again") { fresh(); S.emp = "verified"; }
+  else if (act === "four") { fresh(); S.emp = "unverified"; S.view = "worker"; }
+  else if (act === "openDispute") { S.boss.open = true; S.boss.err = null; render(); $("reason")?.focus(); return; }
+  else if (act === "closeDispute") { S.boss.open = false; S.boss.reasonErr = false; }
+  else if (act === "view") { S.view = b.dataset.view; render(); window.scrollTo({ top: 0 }); return; }
+  else if (act === "copy") {
+    navigator.clipboard?.writeText(info.contract).then(() => { S.copied = true; renderEvidence(); setTimeout(() => { S.copied = false; renderEvidence(); }, 1500); }).catch(() => {});
+    return;
   }
-  return callDemo({ action: b.dataset.a, id });
-}
-function onPanelChange(e) {
-  if (e.target.name === "rep") reportHash = e.target.value;
-  if (e.target.name === "win") windowSecs = Number(e.target.value);
-  if (e.target.name === "emp") employerChoice = e.target.value;
-  if (submitting?.error) submitting = null;
-  renderPanel(true);
-}
-function onView(e) {
-  const b = e.target.closest("button[data-view]");
-  if (!b) return;
-  view = b.dataset.view === "all" ? "all" : Number(b.dataset.view);
-  renderSide();
-  renderList();
-}
-
-async function lookupMeId() {
-  const a = $("meidAddr").value.trim();
-  const out = $("meidOut");
-  if (!/^me1[0-9a-z]{38}$/.test(a)) { out.textContent = "地址格式不對：要是 me1 開頭、共 41 個字元，例如左邊示範帳號的地址。"; $("meidAddr").setAttribute("aria-invalid", "true"); return; }
-  $("meidAddr").removeAttribute("aria-invalid");
-  out.textContent = "查詢中…";
-  const r = await queryLevel(a);
-  levels.set(a, { ...r, at: Date.now() });
-  out.innerHTML = `ME ID <b>${esc(LV[r.state])}</b>・節點回：${esc(r.raw)}・${ext(r.url, "看原始回應")}`;
-}
+  render();
+});
+document.addEventListener("change", (e) => { if (e.target.name === "win") { S.win = Number(e.target.value); renderWorker(); } });
+document.addEventListener("input", (e) => {
+  if (e.target.id === "reason") { S.boss.reason = e.target.value; if (S.boss.reasonErr && S.boss.reason.trim()) { S.boss.reasonErr = false; renderBoss(); } }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.id === "reason") dispute(); });
+document.addEventListener("toggle", (e) => { if (e.target.matches?.("[data-rules]")) S.rulesOpen = e.target.open; }, true);
+window.matchMedia("(max-width: 1023px)").addEventListener("change", () => { lastB = ""; render(); });
 
 async function init() {
-  info = await (await fetch("/api/demo", { cache: "no-store" })).json();
-  $("newBtn").onclick = () => openPanel("new");
-  $("openTools").onclick = () => openPanel("tools");
-  $("openToolsM").onclick = () => openPanel("tools");
-  $("nav").onclick = onView;
-  $("chips").onclick = onView;
-  $("rows").onclick = (e) => { const row = e.target.closest(".row"); if (row) openPanel("detail", Number(row.dataset.id)); };
-  $("rows").onkeydown = (e) => {
-    const row = e.target.closest(".row");
-    if (!row) return;
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPanel("detail", Number(row.dataset.id)); }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); (e.key === "ArrowDown" ? row.nextElementSibling : row.previousElementSibling)?.closest?.(".row")?.focus(); }
-  };
-  $("panel").onclick = onPanelClick;
-  $("panel").onchange = onPanelChange;
-  $("panel").onkeydown = (e) => { if (e.key === "Enter" && e.target.id === "meidAddr") lookupMeId(); };
-  try { await loadReports(); } catch { /* composer shows the failure */ }
-  renderSide();
-  renderPanel(true);
+  render();
+  try { await loadReports(); } catch { /* shown below */ }
+  render();
+  try { info = await getJson("/api/demo"); } catch { S.phase = "fatal"; render(); return; }
+  if (!info.worker || !info.employer) { S.phase = "fatal"; render(); return; }
+  await Promise.all([syncClock().catch(() => {}), loadLevel(info.employer), loadLevel(info.employers.unverified)]);
+  // resume only a claim this browser sent that is still open; otherwise start fresh (shared demo accounts)
+  const last = mine().slice(-1)[0];
+  S.phase = "draft";
+  if (last) {
+    try {
+      await loadRecord(last);
+      if (S.rec.status !== "pending") fresh(); else await loadTxs(last).catch(() => {});
+    } catch { fresh(); }
+  }
+  render();
+  loadEvidence();
   setInterval(tick, 1000);
-  refresh();
+  setInterval(poll, 4000);
+  setInterval(() => { if (!document.hidden) loadEvidence(); }, 20000);
 }
-
-init().catch((e) => { $("rows").innerHTML = `<p class="empty"><b>示範伺服器沒有回應。</b><br>${esc(e.message)}。請稍後重新整理。</p>`; });
+init();
 })();

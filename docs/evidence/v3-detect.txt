@@ -1,0 +1,13 @@
+impeccable detect（v4.9.2，DO_NOT_TRACK=1）
+指令：bash <impeccable 4.9.2 外掛>/skills/impeccable/scripts/impeccable detect --json web/index.html web/app.js
+日期：2026-11-17
+
+第一次跑（DESIGN.md v3 還沒列淺色衍生色）：9 項，全部是 advisory「Color outside DESIGN.md」：
+  #172d0c（手機切換列底）、#38c8ff（鍵盤焦點框）、#b9bdb6（連結底線、空狀態圖示）、#dde1da（次要按鈕滑過）、
+  #c9cdc6（追蹤條空圈）、#4d0d10（擋下卡片內文）、#fff6cc（倒數那一行的底）、#ffb3b5（深色舞台上的「合約拒絕」字）、
+  #2f4d1a（新的一列短暫亮起）。
+處理：這些都是刻意用的、由 Wise token 調出來的淺色或深色，沒有改顏色，而是逐一寫進 DESIGN.md v3 的 colors（附用途）。
+  #38c8ff 是 Wise 的 accent-cyan，只當鍵盤焦點框，DESIGN.md 已寫明。
+
+最後一次跑（本檔同資料夾 v3-detect.json）：0 項。
+刻意保留：無。

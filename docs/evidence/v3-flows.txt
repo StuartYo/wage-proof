@@ -1,0 +1,62 @@
+wage-proof v3 介面：四條流程實跑（2026-11-17 台灣時間 00:11～00:14）
+方式：本機伺服 public/（node scripts/build-public.mjs 產生）＋把 /api/* 轉給 production https://wage-proof.vercel.app/api/demo；瀏覽器是 headless Chrome（Playwright），每一步都是在畫面上點按鈕，不是直接呼叫 API。
+合約 code 22：me1gsy3cm2n5mnmv9esz5ysm7np3xgxryktjmfgu22jldfwps2u3rks38x2yg（ME 測試網 mechain_400-1）
+示範勞工地址 me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl；查證：Hub REST /cosmos/tx/v1beta1/txs/<雜湊>
+
+== 畫面記錄（Playwright 腳本輸出）==
+== A: 補發 ==
+geo W1 {"vw":1440,"submit":{"top":653,"bottom":705,"h":52,"inView":true},"confirm":null,"expire":null,"scrollY":0,"cjkWorker":85,"cjkBoss":35,"sw":1440}
+geo W1-390 {"vw":390,"submit":{"top":708,"bottom":760,"h":52,"inView":true},"confirm":null,"expire":null,"scrollY":0,"cjkWorker":85,"cjkBoss":null,"sw":390,"small":[]}
+api submit id=9 -> HTTP 200 ok=true tx=EFA6AF0189CF3B454B17788ABE98E6C962F253F572465079EC9B4CB9EAA4EC1F block=5354239 settled= code= contractError=
+geo B1 {"vw":1440,"submit":null,"confirm":{"top":581,"bottom":633,"h":52,"inView":true},"expire":null,"scrollY":0,"cjkWorker":57,"cjkBoss":75,"sw":1440}
+geo B1-390 {"vw":390,"submit":null,"confirm":{"top":587,"bottom":639,"h":52,"inView":true},"expire":null,"scrollY":0,"cjkWorker":null,"cjkBoss":75,"sw":390,"small":[]}
+api confirm id=9 -> HTTP 200 ok=true tx=4F8157F9648948E7CFD28B6D8843E61AE1B24A518EC509C55E524C4B96E12F3F block=5354241 settled=523000 code= contractError=
+clicks from open to paid: 2
+balance line: 你的帳戶0.61692 → 0.62215 MEC補發前後各讀一次餘額：多了 0.00523 MEC
+geo W4paid-390 {"vw":390,"submit":null,"confirm":null,"expire":null,"scrollY":0,"cjkWorker":57,"cjkBoss":null,"sw":390,"small":["4試試看：沒有 ME ID :32","交易 EFA6AF…EC1F:24","交易 4F8157…2F3F:24","看合約回傳:24"]}
+== B: 異議 ==
+api submit id=10 -> HTTP 200 ok=true tx=AD6FA5E4D2ACDBB5D952F6A444C34D8C06DE980508222C197F229C358C2F2126 block=5354244 settled= code= contractError=
+api dispute id=10 -> HTTP 200 ok=true tx=6FE83F2607EB7885375F50C389BB7C48DFC5015F1F8CA08E2757C6646A645F3B block=5354246 settled=0 code= contractError=
+geo W4dispute-390 {"vw":390,"submit":null,"confirm":null,"expire":null,"scrollY":0,"cjkWorker":61,"cjkBoss":null,"sw":390,"small":["4試試看：沒有 ME ID :32","交易 AD6FA5…2126:24","交易 6FE83F…5F3B:24","看合約回傳:24"]}
+== C: 逾期 ==
+api submit id=11 -> HTTP 200 ok=true tx=5A94D4F5315C34248DDC45E417DECA212E47DF18D986D5D6C42302EBA8ADF034 block=5354249 settled= code= contractError=
+waiting for the 30 s deadline
+geo due {"vw":1440,"submit":null,"confirm":null,"expire":{"top":653,"bottom":705,"h":52,"inView":true},"scrollY":0,"cjkWorker":56,"cjkBoss":68,"sw":1440}
+geo W3due-390 {"vw":390,"submit":null,"confirm":null,"expire":{"top":578,"bottom":630,"h":52,"inView":true},"scrollY":0,"cjkWorker":56,"cjkBoss":null,"sw":390,"small":["交易 5A94D4…F034:24","看合約回傳:24"]}
+api markExpired id=11 -> HTTP 200 ok=true tx=95CCA3F6DA79A66A273A7E487CF4C77E60A74273D9435793C918456F25AAB821 block=5354258 settled=0 code= contractError=
+geo W4expired-390 {"vw":390,"submit":null,"confirm":null,"expire":null,"scrollY":0,"cjkWorker":48,"cjkBoss":null,"sw":390,"small":["4試試看：沒有 ME ID :32","交易 5A94D4…F034:24","交易 95CCA3…B821:24","看合約回傳:24"]}
+== D: 沒有 ME ID 被擋 ==
+console: Failed to load resource: the server responded with a status of 403 (Forbidden)
+api submit id= -> HTTP 403 ok=false tx= block= settled= code=employer_not_verified contractError=EmployerNotVerified
+geo Wblocked-390 {"vw":390,"submit":null,"confirm":null,"expire":null,"scrollY":0,"cjkWorker":87,"cjkBoss":null,"sw":390,"small":[]}
+
+== 事後到鏈上逐筆核對（另寫腳本直接問 Hub REST；補發那筆用 x-cosmos-block-height 讀「交易前一個區塊」與「交易那個區塊」的勞工餘額）==
+submit id=9 code=0 height=5354239 tx=EFA6AF0189CF3B454B17788ABE98E6C962F253F572465079EC9B4CB9EAA4EC1F action=submit  
+confirm id=9 code=0 height=5354241 tx=4F8157F9648948E7CFD28B6D8843E61AE1B24A518EC509C55E524C4B96E12F3F action=confirm settled=523000  worker balance @5354240=61692000 umec -> @5354241=62215000 umec (diff 523000)
+submit id=10 code=0 height=5354244 tx=AD6FA5E4D2ACDBB5D952F6A444C34D8C06DE980508222C197F229C358C2F2126 action=submit  
+dispute id=10 code=0 height=5354246 tx=6FE83F2607EB7885375F50C389BB7C48DFC5015F1F8CA08E2757C6646A645F3B action=dispute settled=0 
+submit id=11 code=0 height=5354249 tx=5A94D4F5315C34248DDC45E417DECA212E47DF18D986D5D6C42302EBA8ADF034 action=submit  
+markExpired id=11 code=0 height=5354258 tx=95CCA3F6DA79A66A273A7E487CF4C77E60A74273D9435793C918456F25AAB821 action=mark_expired settled=0 
+submit HTTP 403 employer_not_verified EmployerNotVerified rejectProof https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF
+rejectProof tx code=5 height=5353726 failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below re
+
+== 結論 ==
+1. 補發：補薪單 #9 送出 EFA6AF0189CF3B454B17788ABE98E6C962F253F572465079EC9B4CB9EAA4EC1F，老闆補發 4F8157F9648948E7CFD28B6D8843E61AE1B24A518EC509C55E524C4B96E12F3F。勞工餘額 0.61692000 → 0.62215000 MEC，剛好多 523000 umec＝0.00523 MEC＝主張的 NT$523（示範換算 NT$1＝1000 umec）。畫面上顯示「0.61692 → 0.62215 MEC」。從開網址到補發完成點了 2 下（請老闆補發 NT$523 → 補發 NT$523），1440×900 不用捲動。
+2. 異議：補薪單 #10 送出 AD6FA5E4D2ACDBB5D952F6A444C34D8C06DE980508222C197F229C358C2F2126，老闆異議 6FE83F2607EB7885375F50C389BB7C48DFC5015F1F8CA08E2757C6646A645F3B（settled=0，沒有付款；先試過空白理由，畫面在欄位旁顯示「寫一句理由」，沒有送出）。
+3. 逾期：補薪單 #11（期限 30 秒）送出 5A94D4F5315C34248DDC45E417DECA212E47DF18D986D5D6C42302EBA8ADF034，到期後畫面自動變成「老闆沒回應」，老闆那邊補發鈕消失；按「記為逾期」95CCA3F6DA79A66A273A7E487CF4C77E60A74273D9435793C918456F25AAB821。
+4. 沒有 ME ID 被擋：送給「範例小吃店」（me1mhyngg3dww60msw6dej4mkzheewjck86450e7g，Hub 回 DID not found），伺服器模擬時合約回 EmployerNotVerified，HTTP 403，沒有送出交易、沒有花手續費。畫面附的「鏈上被拒的那筆交易」是同一條規則先前真的上鏈被拒的交易 7209D85ABA15FAAA0F40962058BE045D9ECF6724748B023E8FA9CB78FDAD56FF（code 5）。
+
+截圖：docs/evidence/v3-shots/（檔名＝狀態－寬度）
+
+== 部署後在 production 再跑一次補發（https://wage-proof.vercel.app/，2026-11-17 00:16）==
+== A: 補發 ==
+geo W1 {"vw":1440,"submit":{"top":653,"bottom":705,"h":52,"inView":true},"confirm":null,"expire":null,"scrollY":0,"cjkWorker":83,"cjkBoss":35,"sw":1440}
+geo W1-390 {"vw":390,"submit":{"top":708,"bottom":760,"h":52,"inView":true},"confirm":null,"expire":null,"scrollY":0,"cjkWorker":83,"cjkBoss":null,"sw":390,"small":[]}
+api submit id=12 -> HTTP 200 ok=true tx=2B8C52B036EF712BD0C9C20AF8740F9D07175C3CC4AF23586D8D849128EFA152 block=5354290 settled= code= contractError=
+geo B1 {"vw":1440,"submit":null,"confirm":{"top":581,"bottom":633,"h":52,"inView":true},"expire":null,"scrollY":0,"cjkWorker":57,"cjkBoss":75,"sw":1440}
+geo B1-390 {"vw":390,"submit":null,"confirm":{"top":587,"bottom":639,"h":52,"inView":true},"expire":null,"scrollY":0,"cjkWorker":null,"cjkBoss":75,"sw":390,"small":[]}
+api confirm id=12 -> HTTP 200 ok=true tx=B4E811C325EBB3431ED0023874A6D4830D90C9B70CC491C56839A69CA907DA6C block=5354292 settled=523000 code= contractError=
+clicks from open to paid: 2
+balance line: 你的帳戶0.62175 → 0.62698 MEC補發前後各讀一次餘額：多了 0.00523 MEC
+geo W4paid-390 {"vw":390,"submit":null,"confirm":null,"expire":null,"scrollY":0,"cjkWorker":57,"cjkBoss":null,"sw":390,"small":["交易 2B8C52…A152:41","交易 B4E811…DA6C:41","看合約回傳:41"]}
+截圖：docs/evidence/v3-shots/prod/（after-deploy-* 是最後一次部署後的首屏）
