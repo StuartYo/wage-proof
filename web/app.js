@@ -80,7 +80,7 @@ const S = {
   rec: null, txs: {},              // my current record and its txs by action
   boss: { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false },
   workerErr: null, bal: { before: null, after: null },
-  view: "worker", toldBoss: false, showFour: false, tried: false,
+  view: "worker", toldBoss: false, showFour: false, tried: false, openReceipt: null,
   ev: [], evLocal: [], evTotal: null, count: null, fresh: new Set(), evErr: false,
 };
 
@@ -319,7 +319,7 @@ async function markExpired() {
 }
 
 function fresh() {
-  S.openReceipt = false;
+  S.openReceipt = null;
   S.phase = "draft"; S.rec = null; S.txs = {}; S.sendErr = null; S.blocked = null; S.workerErr = null;
   S.bal = { before: null, after: null }; S.boss = { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false };
 }
@@ -360,7 +360,7 @@ function receipt(rec) {
   if (!rec) return "";
   const t = S.txs, row = (k, who) => t[k] ? `${who}簽名・區塊 <span class="mono">${num(t[k].height)}</span>${t[k].fee ? `・手續費 <span class="mono">${mec(t[k].fee, 4)}</span> MEC` : ""}<br>${ext(txUrl(t[k].hash), `交易 <span class="mono">${short(t[k].hash)}</span>`)}` : "";
   const reply = t.confirm ? ["補發", row("confirm", "老闆")] : t.dispute ? ["異議", row("dispute", "老闆")] : t.mark_expired ? ["逾期", row("mark_expired", "勞工")] : null;
-  return `<details class="receipt"${S.openReceipt ? " open" : ""}><summary>鏈上收據 ${I.chev()}</summary><dl class="kv">
+  return `<details class="receipt" data-ph="${S.phase}"${(S.openReceipt ?? (S.phase === "waiting" && !isNarrow())) ? " open" : ""}><summary>鏈上收據 ${I.chev()}</summary><dl class="kv">
     <dt>補薪單</dt><dd class="mono">#${rec.id}</dd>
     <dt>送出</dt><dd>${row("submit", "勞工") || "讀取中…"}</dd>
     ${reply ? `<dt>${reply[0]}</dt><dd>${reply[1]}</dd>` : ""}
@@ -467,7 +467,10 @@ function bossHtml() {
   const bossAddr = info?.employer;
   const head = `<div class="btop"><span class="name">${I.store()}<span>${esc(r?.employer || "")}</span></span>${bossAddr ? levelBadge(bossAddr, `你的 ME ID：${LV[levels[bossAddr]] || ""}`) : ""}</div>`;
   if (!open) {
-    return `${head}<div class="empty">${I.inbox()}<p>目前沒有待處理的補薪單</p><p>${isNarrow() ? "等勞工送出" : "等左邊的勞工送出"}</p></div>`;
+    return `${head}<div class="empty">${I.inbox()}<p>目前沒有待處理的補薪單</p><p>${isNarrow() ? "勞工送出後" : "左邊的勞工送出後"}，補薪單會出現在這裡</p>
+      ${r ? `<div class="ghost" aria-hidden="true"><span class="gtag">預覽</span><p class="geb">${esc(r.worker)} 送來一張補薪單</p><p class="gamt"><small>NT$</small>${r.short.toLocaleString("en-US")}</p>
+        <dl><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div><div><dt>時薪</dt><dd>${ntd(r.wage)}</dd></div></dl>
+        <p class="gwill">老闆可以補發，或提出異議</p></div>` : ""}</div>`;
   }
   const twd = rec.claim && rec.claim !== "0" ? twdOf(rec.claim) : r.short;
   const intro = `<p class="eyebrow">${I.user()}${esc(r.worker)} 送來一張補薪單・${hm(rec.submitted_at)}</p>${amtHtml(twd)}<p class="why">${esc(r.bossWhy)}</p>`;
@@ -496,11 +499,11 @@ function bossHtml() {
   // done
   const st = rec.status, t = S.txs[st === "confirmed" ? "confirm" : st === "disputed" ? "dispute" : "mark_expired"];
   const kv = t ? `<dl class="kv" style="margin-top:16px"><dt>時間</dt><dd class="mono">${hms(t.time)}</dd><dt>區塊</dt><dd class="mono">${num(t.height)}</dd><dt>交易</dt><dd>${ext(txUrl(t.hash), `<span class="mono">${short(t.hash)}</span>`)}</dd></dl>` : "";
-  if (st === "confirmed") return `${head}<div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
+  if (st === "confirmed") return `${head}<div class="grow"></div><div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
     ${rec.settled && rec.settled !== "0" ? `<p class="why">合約把 ${mec(rec.settled)} MEC 轉給員工（示範換算）</p>` : ""}${kv}<div class="grow"></div>`;
-  if (st === "disputed") { const reason = reasonOf(rec.id); return `${head}<div class="big disputed">${I.flag()}</div><h3 class="res">已送出異議</h3>
+  if (st === "disputed") { const reason = reasonOf(rec.id); return `${head}<div class="grow"></div><div class="big disputed">${I.flag()}</div><h3 class="res">已送出異議</h3>
     ${reason ? `<p class="quote">「${esc(reason)}」</p>` : ""}<p class="why" style="margin-top:10px">沒有付款。理由的指紋已上鏈。</p>${kv}<div class="grow"></div>`; }
-  return `${head}<div class="big expired">${I.clock()}</div><h3 class="res">這張已逾期</h3><p class="why" style="margin-top:8px">你沒有在期限內回覆，鏈上已記錄。</p>${kv}<div class="grow"></div>`;
+  return `${head}<div class="grow"></div><div class="big expired">${I.clock()}</div><h3 class="res">這張已逾期</h3><p class="why" style="margin-top:8px">你沒有在期限內回覆，鏈上已記錄。</p>${kv}<div class="grow"></div>`;
 }
 
 // ---------- guide + dock ----------
@@ -541,8 +544,9 @@ function renderGuide() {
   const fourLi = four ? `<li class="${cur === 3 ? "on" : ""}"${cur === 3 ? ' aria-current="step"' : ""}>${cur === 3 || !["done", "draft"].includes(S.phase)
     ? `<span class="n">4</span><span class="long">試試看：沒有 ME ID 的公司</span><span class="short">試擋下</span>`
     : `<button type="button" data-act="four"><span class="n">4</span><span class="long">試試看：沒有 ME ID 的公司</span><span class="short">試擋下</span></button>`}</li>` : "";
-  $("guide").innerHTML = STEPS.map((s, i) => li(i, s)).join("") + fourLi;
-  $("now").innerHTML = text;
+  void li; void fourLi;
+  const tag = cur === 3 ? "加碼示範" : `第 ${cur + 1} 步，共 3 步`;
+  $("now").innerHTML = text ? `<span class="steptag">${tag}</span><span>${text}</span>` : "";
 }
 function renderDock() {
   const d = $("dock");
@@ -563,8 +567,7 @@ function renderSwitch() {
 // ---------- evidence strip ----------
 function renderEvidence() {
   if (!info) return;
-  $("evhead").innerHTML = `<h2 id="evTitle">鏈上發生了什麼</h2>
-    <span class="meta">合約 <b title="${esc(info.contract)}">${short(info.contract, 9, 6)}</b>
+  $("evhead").innerHTML = `<p class="evplain">這份合約公開在 ME Network 上，任何人都能核對</p><span class="meta">合約 <b title="${esc(info.contract)}">${short(info.contract, 9, 6)}</b>
       <button class="icon-btn" type="button" data-act="copy" aria-label="複製合約地址">${S.copied ? "已複製" : I.copy()}</button>
       <a href="${esc(smartUrl({ config: {} }))}" target="_blank" rel="noopener">查證${I.ext()}</a></span>
     <span class="meta total">${S.evTotal != null ? `ME Network 測試網・已完成 <b>${num(S.evTotal)}</b> 筆交易` : "讀取中…"}</span>`;
@@ -599,8 +602,8 @@ function renderWorker() {
   const h = workerHtml();
   if (stable(h) === lastW) return;
   lastW = stable(h);
-  const el = $("worker"), openR = el.querySelector("details.receipt")?.open;
-  if (openR !== undefined) S.openReceipt = openR;
+  const el = $("worker"), d = el.querySelector("details.receipt");
+  S.openReceipt = d && d.dataset.ph === S.phase ? d.open : null; // keep a manual toggle only within the same step
   el.innerHTML = h;
   tick();
 }
