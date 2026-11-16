@@ -80,7 +80,7 @@ const S = {
   rec: null, txs: {},              // my current record and its txs by action
   boss: { open: false, busy: null, at: 0, err: null, reason: "", reasonErr: false },
   workerErr: null, bal: { before: null, after: null },
-  view: "worker", toldBoss: false, showFour: false,
+  view: "worker", toldBoss: false, showFour: false, tried: false,
   ev: [], evLocal: [], evTotal: null, count: null, fresh: new Set(), evErr: false,
 };
 
@@ -233,7 +233,7 @@ async function submit() {
     loadEvidence();
     poll();
   } else if (j.code === "employer_not_verified") {
-    S.phase = "blocked"; S.blocked = j; S.showFour = true;
+    S.phase = "blocked"; S.blocked = j; S.showFour = true; S.tried = true;
     addLocal({ who: "合約", what: "合約拒絕：老闆沒有 ME ID", sub: "伺服器先模擬，合約不收，所以沒有送出", rej: true, link: j.rejectProofUrl });
     render();
   } else {
@@ -427,7 +427,7 @@ function workerHtml() {
       ${receipt(rec)}
       <div class="grow"></div>
       ${S.workerErr ? `<p class="err" role="alert">${esc(S.workerErr)}</p>` : ""}
-      ${S.phase === "waiting" ? `<p class="hint">${I.arrow()}老闆的手機已經收到這張補薪單</p>`
+      ${S.phase === "waiting" ? `<p class="hint">已經送到${isNarrow() ? "" : "右邊"}老闆的手機，等他回覆</p>`
         : S.phase === "marking" ? `<button class="btn primary" type="button" disabled><span class="spin"></span>寫上 ME Network…</button>`
         : `<button class="btn primary" type="button" data-act="expire">記為逾期</button>`}`;
   }
@@ -456,7 +456,8 @@ function workerHtml() {
       ${S.txs.mark_expired ? ext(txUrl(S.txs.mark_expired.hash), "查證這筆紀錄") : ""}`;
   }
   return `<p class="eyebrow">${I.store()}補薪單 #${rec.id}・${esc(r.employer)}</p>${body}${receipt(rec)}
-    <div class="grow"></div><button class="btn second" type="button" data-act="again">再送一張</button>`;
+    <div class="grow"></div>${S.tried ? `<button class="btn second" type="button" data-act="again">再送一張</button>`
+      : `<button class="btn primary" type="button" data-act="four">試試看：沒有 ME ID 的公司</button><button class="link c" type="button" data-act="again">再送一張</button>`}`;
 }
 
 // ---------- boss phone ----------
@@ -529,7 +530,7 @@ function guideState() {
     }
     case "due": return [1, `老闆沒在期限內回覆。${go("worker", "記為逾期")}`];
     case "marking": return [1, "寫上 ME Network 中…"];
-    case "done": return [2, "完成。打開「鏈上收據」，或試試看 ④"];
+    case "done": return S.tried ? [2, "完成。打開左邊的「鏈上收據」可以核對每一步"] : [2, `完成。${go("worker", "試試看：沒有 ME ID 的公司", "，看合約怎麼擋假老闆")}`];
     default: return [0, ""];
   }
 }

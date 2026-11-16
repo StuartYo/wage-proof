@@ -100,12 +100,12 @@ code { font-size: .9em; word-break: break-all; }
 .grow { flex: 1 1 auto; min-height: 14px; }
 .warnline { display: flex; align-items: center; gap: 6px; color: var(--disputed-deep); font-weight: 700; font-size: 15px; margin-bottom: 10px; }
 .err { color: var(--disputed-deep); font-size: 14px; font-weight: 600; margin-bottom: 10px; }
-.hint { display: flex; align-items: center; gap: 8px; background: var(--soft); border-radius: var(--r-sm); padding: 12px 14px; font-size: 15px; }
+.hint { font-size: 15px; color: var(--body); text-align: center; margin: 0 0 4px; }
 
 .btn { width: 100%; min-height: 52px; border: 0; border-radius: 9999px; font: 800 17px/1.2 var(--font); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: transform 100ms ease-out, background-color 150ms ease-out; padding: 0 20px; }
 .btn:active:not(:disabled) { transform: scale(.98); }
 .btn.primary { background: var(--primary); color: var(--ink-deep); }
-.btn.primary:hover:not(:disabled) { background: var(--primary-active); }
+.btn.primary:hover:not(:disabled) { background: #8fd860; }
 .btn:disabled { background: var(--soft); color: var(--body); cursor: progress; }
 .btn.second { background: var(--soft); color: var(--ink); }
 .btn.second:hover { background: #dde1da; }
