@@ -22,5 +22,35 @@
       ],
       "gas": "361240"
     }
+  },
+  "wageProof": {
+    "codeId": 21,
+    "contract": "me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc",
+    "storeTx": "1C88EAA9F07382306932D791AB71515CBE3274BBF354B61D656BF12F75692896",
+    "storeFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "219524"
+        }
+      ],
+      "gas": "10976175"
+    },
+    "instTx": "4231B5DC06DDF3C648B0ABCE811CDD41BBB2BAE44EA9A6CE6589F6A4169B7AB3",
+    "instFee": {
+      "amount": [
+        {
+          "denom": "umec",
+          "amount": "10000"
+        }
+      ],
+      "gas": "376210"
+    },
+    "wasmSha256": "ecd80dd306dcbc2d73d8654c902f299fd375c591899d6f4dc67d0f99ca3fdfb3",
+    "initMsg": {
+      "min_employer_level": "one"
+    },
+    "admin": "",
+    "deployedAt": "2026-11-16T09:50:12.273Z"
   }
 }

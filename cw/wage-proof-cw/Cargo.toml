@@ -1,8 +1,8 @@
 [package]
 name = "wage-proof-cw"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Probe: can a CosmWasm contract on ME Hub read the ME ID (DID) module via Stargate query?"
+description = "WageProof on ME Hub: confirm-or-dispute registry for wage evidence fingerprints; the contract reads the employer ME ID itself."
 license = "MIT"
 
 [lib]

@@ -1,0 +1,97 @@
+# WageProof CosmWasm e2e 2026-11-16T09:50:54.937Z
+chain=mechain_400-1 rpc=https://beta-hub-26657.explorer-testnet.me contract=me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc codeId=21
+accounts: main=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl new-employer=me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5
+report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db (sha256 of demo/synthetic-report.json, synthetic data)
+query config: {"min_employer_level":"one"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb25maWciOnt9fQ%3D%3D
+query count (before): 0
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
+
+## (1) employer without ME ID -> contract rejects
+query me_id NO_MEID: {"address":"me1mhyngg3dww60msw6dej4mkzheewjck86450e7g","level":"none","kyc_level":"","status":"","did":"","source":"not_found","raw_error":"codespace: did, code: 111"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxbWh5bmdnM2R3dzYwbXN3NmRlajRta3poZWV3amNrODY0NTBlN2cifX0%3D
+TX (1) worker submit, employer=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g: expect "EmployerNotVerified"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below required one (source not_found): execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '256167' : unknown request
+  on-chain: code=5 hash=95F15D92C809E1DFD1D426488A263880FBE4293E407041B1B9B073D3B6A9939E height=5349591 gasUsed=191636/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1mhyngg3dww60msw6dej4mkzheewjck86450e7g ME ID level none is below required one (source not_found): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/95F15D92C809E1DFD1D426488A263880FBE4293E407041B1B9B073D3B6A9939E
+  PASS: (1) worker submit, employer=me1mhyngg3dww60msw6dej4mkzheewjck86450e7g rejected with EmployerNotVerified
+query count (after 1): 0
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
+  PASS: count unchanged 0 -> 0
+
+## (2) employer with ME ID level two -> accepted, levels stored
+query me_id OLD_EMP_TWO: {"address":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","level":"two","kyc_level":"KYC_LEVEL_TWO","status":"DID_STATUS_ACTIVE","did":"2611108677483","source":"found","raw_error":""}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxaGhxdnltdm56NW16M2pmNXBnNGFyNHZ4aHl4c3lycXI3dGd3eWYifX0%3D
+TX (2) worker submit, employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf, 30 s: OK hash=52EE084B6DBBE73E32AD5FF023D3616C0814A47EA7C34EBFCC382A5CC6515021 height=5349592 fee=10000umec
+  wasm event: action=submit id=1 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db deadline=1794822685 employer_level=two worker_level=none
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/52EE084B6DBBE73E32AD5FF023D3616C0814A47EA7C34EBFCC382A5CC6515021
+query record 1: {"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794822655,"deadline":1794822685,"closed_at":null,"closed_by":null,"status":"pending","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjF9fQ%3D%3D
+  PASS: record 1 employer_level=two worker_level=none
+query records_for_report: [1]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmRzX2Zvcl9yZXBvcnQiOnsicmVwb3J0X2hhc2giOiIxNzUyNzc1ZTZjYTE3ZGU2ZjcyM2FhODQ4ODJmMTUzYWZhMzkzNWU4MjEyODg3NWU3ZDYzMjFiMjM3OTBmOWRiIn19
+query list (latest 3): [{"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794822655,"deadline":1794822685,"closed_at":null,"closed_by":null,"status":"pending","employer_level":"two","worker_level":"none"}]
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJsaXN0Ijp7ImxpbWl0IjozfX0%3D
+
+## (3) 30 s deadline -> wait -> anyone marks expired
+TX (3a) main marks #1 expired before deadline: expect "DeadlineNotPassed"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: DeadlineNotPassed: deadline 1794822685 >= now 1794822655: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '231619' : unknown request
+  on-chain: code=5 hash=AB9472FEE27E945CDDAA15E242358100B84958066E6C9CF4DAF9538E2B0C9FB0 height=5349593 gasUsed=167067/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: DeadlineNotPassed: deadline 1794822685 >= now 1794822660: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/AB9472FEE27E945CDDAA15E242358100B84958066E6C9CF4DAF9538E2B0C9FB0
+  PASS: (3a) main marks #1 expired before deadline rejected with DeadlineNotPassed
+TX (3b) worker tries to confirm #1 (not the employer): expect "NotEmployer"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '231188' : unknown request
+  on-chain: code=5 hash=FFC1048FC2B5F6030C7A5DABB7E75C23E513D1CB6C8C7971E0CD416184DC4988 height=5349594 gasUsed=166546/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/FFC1048FC2B5F6030C7A5DABB7E75C23E513D1CB6C8C7971E0CD416184DC4988
+  PASS: (3b) worker tries to confirm #1 (not the employer) rejected with NotEmployer
+latest block time 1794822689.64 > deadline 1794822685
+query effective_status 1: expired
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJlZmZlY3RpdmVfc3RhdHVzIjp7ImlkIjoxfX0%3D
+query record 1 status: {"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794822655,"deadline":1794822685,"closed_at":null,"closed_by":null,"status":"pending","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjF9fQ%3D%3D
+  PASS: effective_status=expired while stored status=pending
+TX (3c) main marks #1 expired: OK hash=8ED50F2F2DC18550EA27B7CEC6E5DC23B2EE202D240C311DE9B780589518BF24 height=5349600 fee=10000umec
+  wasm event: action=mark_expired id=1 caller=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none at=1794822694
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/8ED50F2F2DC18550EA27B7CEC6E5DC23B2EE202D240C311DE9B780589518BF24
+  PASS: caller attribute = third party me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc
+TX (3d) worker marks #1 expired again: expect "NotPending"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: NotPending: record 1 is expired: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '231731' : unknown request
+  on-chain: code=5 hash=F021F2FD4F77201C53170542C3A1919529F90DCA7F80B2EE3AD4C5E97E4BE410 height=5349601 gasUsed=167170/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotPending: record 1 is expired: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/F021F2FD4F77201C53170542C3A1919529F90DCA7F80B2EE3AD4C5E97E4BE410
+  PASS: (3d) worker marks #1 expired again rejected with NotPending
+TX (3e) worker disputes #1 after expiry (not the employer): expect "NotEmployer"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '239440' : unknown request
+  on-chain: code=5 hash=5A69BCE9781020E0A3AD678402A1563D3247567CCAB5FDF39651952ABC6A358D height=5349602 gasUsed=174900/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/5A69BCE9781020E0A3AD678402A1563D3247567CCAB5FDF39651952ABC6A358D
+  PASS: (3e) worker disputes #1 after expiry (not the employer) rejected with NotEmployer
+TX (3f) unknown id 999999: expect "NoSuchRecord"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: NoSuchRecord: id 999999: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '230949' : unknown request
+  on-chain: code=5 hash=4CFFE10729D8DE7305F77FAA6E25F873BBFC7EC577A08BA68860692EEC006D5C height=5349603 gasUsed=166406/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NoSuchRecord: id 999999: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/4CFFE10729D8DE7305F77FAA6E25F873BBFC7EC577A08BA68860692EEC006D5C
+  PASS: (3f) unknown id 999999 rejected with NoSuchRecord
+query record 1 (final): {"id":1,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db","reason_hash":null,"submitted_at":1794822655,"deadline":1794822685,"closed_at":1794822694,"closed_by":"me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc","status":"expired","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjF9fQ%3D%3D
+
+## (4) new demo employer: ME ID?
+query me_id NEW_EMP: {"address":"me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5","level":"none","kyc_level":"","status":"","did":"","source":"not_found","raw_error":"codespace: did, code: 111"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxbGRzN3o0NjR0cm12am1wc3YzNG5wa2Z0ZGxrdWpwcHc5NW5yZDUifX0%3D
+TX (4) worker submit, employer=me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 (no ME ID yet): expect "EmployerNotVerified"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 ME ID level none is below required one (source not_found): execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '246450' : unknown request
+  on-chain: code=5 hash=EA80A17AC3E0CD403A1C1E79C315AA148E7594DFA00FE7D141CA9332DB1BB0C4 height=5349604 gasUsed=181841/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: EmployerNotVerified: employer me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 ME ID level none is below required one (source not_found): execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/EA80A17AC3E0CD403A1C1E79C315AA148E7594DFA00FE7D141CA9332DB1BB0C4
+  PASS: (4) worker submit, employer=me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 (no ME ID yet) rejected with EmployerNotVerified
+full flow waits for the new demo employer's ME ID; then run: node scripts/cw-e2e.mjs --full
+query count (after): 1
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
+balance main(umec) 79566508
+balance worker(umec) 9940000
+balance new-employer(umec) 10000000
+
+result: 11 PASS, 0 UNEXPECTED

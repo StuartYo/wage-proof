@@ -1,1 +1,1 @@
-8d53eb892afe15d56dbbca8d43cbf14fbdd6f2d7c8033f8e86b99430e77b92d3 *wage_proof_cw.wasm
+ecd80dd306dcbc2d73d8654c902f299fd375c591899d6f4dc67d0f99ca3fdfb3 *wage_proof_cw.wasm

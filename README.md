@@ -26,7 +26,7 @@
 
 `npm run wallet` 會在本機產生一個**只給 ME Network 測試網用**的錢包，助記詞寫在 `.env`（已被 `.gitignore` 擋掉，不會進 git）。**不得存入任何真實資產。** 公開地址記在 `config/wallet.public.json`。
 
-## 狀態（2026-11-11）
+## 狀態（2026-11-16）
 
 | 項目 | 狀態 |
 |---|---|
@@ -37,13 +37,15 @@
 | 部署到測試網、memo 交易 | 完成：合約 `0x07C06de8D0D593E45Fa4f16bF4B7D82d96D723E0`，確認／異議／逾期三條路徑已在測試網跑通 |
 | 線上示範 https://wage-proof.vercel.app/ | 上線；讀鏈走唯讀中繼、寫鏈由伺服器用示範帳號代簽 |
 | 本機示範頁（`web/local.html`） | 只連本機模擬鏈 |
+| CosmWasm 正式合約（合約自己查雇主 ME ID） | 單元測試 22 項全過；測試網 code id 21 實跑 11 項照預期（2026-11-16） |
 
 ### 兩個合約，各自的角色
 
 - **Solidity 版**（`contracts/WageProof.sol`，ME 測試網 EVM）：線上示範用的就是它。確認／異議／逾期由合約把關；「雇主要有 ME ID」由伺服器先查，查過才送交易。
-- **CosmWasm 探路合約**（`cw/wage-proof-cw/`，ME 測試網 code id 13）：讓合約自己查 ME ID，不必經過伺服器。上傳、建立都成功，但目前的測試網節點還沒開放這個查詢，所以還沒接上示範。詳見 `docs/day4-cosmwasm.md`。
+- **CosmWasm 正式合約**（`cw/wage-proof-cw/`，ME 測試網 code id 21，`me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc`）：規則和 Solidity 版一樣，另外**合約登記時自己查雇主的 ME ID**，等級不到 one 就拒絕，並把雙方當下的等級存進紀錄。測試網已實跑：沒有 ME ID 的雇主被合約擋下、等級 two 的雇主登記成功、30 秒逾期後第三方標記成功。admin 留空，沒有人能改這份合約。線上示範還沒接過來。詳見 `docs/day5-cosmwasm-contract.md`。
+- **CosmWasm 探路合約**（code id 13）：第四天用來確認合約能不能查 ME ID，現在只留作紀錄。
 
-細節與證據：`docs/day1.md`、`docs/day2-online-demo.md`、`docs/day3-meid.md`、`docs/day4-cosmwasm.md`。
+細節與證據：`docs/day1.md`、`docs/day2-online-demo.md`、`docs/day3-meid.md`、`docs/day4-cosmwasm.md`、`docs/day5-cosmwasm-contract.md`。
 
 ## 啟動步驟
 

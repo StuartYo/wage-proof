@@ -1,0 +1,13 @@
+# WageProof CosmWasm e2e --full 2026-11-16T09:52:08.895Z
+chain=mechain_400-1 rpc=https://beta-hub-26657.explorer-testnet.me contract=me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc codeId=21
+accounts: main=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl new-employer=me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5
+report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db (sha256 of demo/synthetic-report.json, synthetic data)
+query config: {"min_employer_level":"one"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb25maWciOnt9fQ%3D%3D
+query count (before): 1
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
+
+## --full: new demo employer full flow
+query me_id NEW_EMP: {"address":"me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5","level":"none","kyc_level":"","status":"","did":"","source":"not_found","raw_error":"codespace: did, code: 111"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxbGRzN3o0NjR0cm12am1wc3YzNG5wa2Z0ZGxrdWpwcHc5NW5yZDUifX0%3D
+STOP: new demo employer me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 has no ME ID yet (level none, source not_found). Nothing sent.
