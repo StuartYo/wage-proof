@@ -1,13 +1,75 @@
-# WageProof CosmWasm e2e --full 2026-11-16T09:52:08.895Z
+# WageProof CosmWasm e2e --full 2026-11-16T10:12:08.252Z
 chain=mechain_400-1 rpc=https://beta-hub-26657.explorer-testnet.me contract=me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc codeId=21
-accounts: main=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl new-employer=me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5
+accounts: main=me1lpvn9zxaepduse7txy8fnek5tvmuyqzqz2t9rc worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf (old demo employer, EVM key, signed as ethsecp256k1)
 report_hash=1752775e6ca17de6f723aa84882f153afa3935e82128875e7d6321b23790f9db (sha256 of demo/synthetic-report.json, synthetic data)
 query config: {"min_employer_level":"one"}
   REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb25maWciOnt9fQ%3D%3D
-query count (before): 1
+query count (before): 6
   REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
 
-## --full: new demo employer full flow
-query me_id NEW_EMP: {"address":"me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5","level":"none","kyc_level":"","status":"","did":"","source":"not_found","raw_error":"codespace: did, code: 111"}
-  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxbGRzN3o0NjR0cm12am1wc3YzNG5wa2Z0ZGxrdWpwcHc5NW5yZDUifX0%3D
-STOP: new demo employer me1lds7z464trmvjmpsv34npkftdlkujppw95nrd5 has no ME ID yet (level none, source not_found). Nothing sent.
+## --full: employer with ME ID, full flow
+query me_id employer: {"address":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","level":"two","kyc_level":"KYC_LEVEL_TWO","status":"DID_STATUS_ACTIVE","did":"2611108677483","source":"found","raw_error":""}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxaGhxdnltdm56NW16M2pmNXBnNGFyNHZ4aHl4c3lycXI3dGd3eWYifX0%3D
+query me_id worker: {"address":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","level":"none","kyc_level":"","status":"","did":"","source":"not_found","raw_error":"codespace: did, code: 111"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJtZV9pZCI6eyJhZGRyZXNzIjoibWUxd2FlejlnNWF0Y3Y0bmU5azdka3JyeGczenk3OXZmbno0Z3d3bmwifX0%3D
+TX (F1) worker submit, 600 s: OK hash=045B38FAD7D4B0329DFA6618784AB3EF05F2CA7AE7095974096E467BEA09A7F6 height=5349850 fee=10000umec
+  wasm event: action=submit id=7 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51 deadline=1794824524 employer_level=two worker_level=none
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/045B38FAD7D4B0329DFA6618784AB3EF05F2CA7AE7095974096E467BEA09A7F6
+TX (F1) employer confirms #7: OK hash=8CF66D00B6E939D8B59162CAB753FCFCB82BBE3C1596FD2A5CF63796E18608F4 height=5349851 fee=10000umec
+  wasm event: action=confirm id=7 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none at=1794823928
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/8CF66D00B6E939D8B59162CAB753FCFCB82BBE3C1596FD2A5CF63796E18608F4
+TX (F2) worker submit, 600 s: OK hash=D8BEE894ABA96DDC1EC65288ED5D06F97CA79B4D5797BBBEDB2A88DA40762135 height=5349852 fee=10000umec
+  wasm event: action=submit id=8 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51 deadline=1794824533 employer_level=two worker_level=none
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/D8BEE894ABA96DDC1EC65288ED5D06F97CA79B4D5797BBBEDB2A88DA40762135
+TX (F2) employer disputes #8: OK hash=642E64337996000CD6F8DE9E38C296CA69845764E53564CCA9A755A09239FD91 height=5349853 fee=10000umec
+  wasm event: action=dispute id=8 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none at=1794823938 reason_hash=9f8f034fa9bd2e21fb47262ea86e582c867dec658bd245f45318fb2bba3d4e37
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/642E64337996000CD6F8DE9E38C296CA69845764E53564CCA9A755A09239FD91
+TX (F3) worker submit, 600 s: OK hash=A94415EF109250DBB518BC91F846AA6449D8AB0BE7079943734682110C7225D1 height=5349854 fee=10000umec
+  wasm event: action=submit id=9 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51 deadline=1794824543 employer_level=two worker_level=none
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/A94415EF109250DBB518BC91F846AA6449D8AB0BE7079943734682110C7225D1
+TX (F3) worker tries to confirm #9: expect "NotEmployer"
+  simulate error (raw): Query failed with (6): rpc error: code = Unknown desc = failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '231188' : unknown request
+  on-chain: code=5 hash=5D72FD4213E0E0DBA255E26D8E03B0FDEF5CD80CC2F36409E1B3F8784FD519B5 height=5349855 gasUsed=166606/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotEmployer: caller me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl is not employer me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/5D72FD4213E0E0DBA255E26D8E03B0FDEF5CD80CC2F36409E1B3F8784FD519B5
+  PASS: (F3) worker tries to confirm #9 rejected with NotEmployer
+TX (F4) employer confirms #7 again: expect "NotPending"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: NotPending: record 7 is confirmed: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '248428' 
+  on-chain: code=5 hash=CB74685DB21B2708B66D9CF5A1DCFE89A337A2B909317E8097030B02411FF48D height=5349856 gasUsed=190526/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotPending: record 7 is confirmed: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/CB74685DB21B2708B66D9CF5A1DCFE89A337A2B909317E8097030B02411FF48D
+  PASS: (F4) employer confirms #7 again rejected with NotPending
+TX (F4) employer disputes #8 again: expect "NotPending"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: NotPending: record 8 is disputed: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '256728' 
+  on-chain: code=5 hash=5AFDD652E4B5277D9CA8D123147850CB634A62FD894ACFA07114FDD56FA64E70 height=5349857 gasUsed=198826/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: NotPending: record 8 is disputed: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/5AFDD652E4B5277D9CA8D123147850CB634A62FD894ACFA07114FDD56FA64E70
+  PASS: (F4) employer disputes #8 again rejected with NotPending
+TX (F5) worker submit, 30 s: OK hash=2B906B0B0CA90BD1D8E648500DC9F0712D58821B4BBB522245E09C44FEB961E4 height=5349858 fee=10000umec
+  wasm event: action=submit id=10 worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf report_hash=44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51 deadline=1794823993 employer_level=two worker_level=none
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/2B906B0B0CA90BD1D8E648500DC9F0712D58821B4BBB522245E09C44FEB961E4
+latest block time 1794823997.745 > deadline 1794823993
+TX (F5) employer confirms #10 after deadline: expect "DeadlinePassed"
+  simulate error (raw): failed to execute message; message index: 0: Generic error: DeadlinePassed: deadline 1794823993 < now 1794823997: execute wasm contract failed [CosmWasm/wasmd@v0.43.0/x/wasm/keeper/keeper.go:395] With gas wanted: '18446744073709551615' and gas used: '248407' 
+  on-chain: code=5 hash=6271FCD0207F28619CE494144060E67C49E3AAD466AE9ADF22144EAEF8964C44 height=5349866 gasUsed=190505/500000
+  on-chain raw_log: failed to execute message; message index: 0: Generic error: DeadlinePassed: deadline 1794823993 < now 1794824002: execute wasm contract failed
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/6271FCD0207F28619CE494144060E67C49E3AAD466AE9ADF22144EAEF8964C44
+  PASS: (F5) employer confirms #10 after deadline rejected with DeadlinePassed
+TX (F5) worker marks #10 expired: OK hash=2924ACBB9C4854BA5D9986EF9578B210DC9A963B85BACCE8DF19EB19861F4266 height=5349867 fee=10000umec
+  wasm event: action=mark_expired id=10 caller=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl worker=me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl employer=me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf employer_level=two worker_level=none at=1794824007
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmos/tx/v1beta1/txs/2924ACBB9C4854BA5D9986EF9578B210DC9A963B85BACCE8DF19EB19861F4266
+query record 7: {"id":7,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51","reason_hash":null,"submitted_at":1794823924,"deadline":1794824524,"closed_at":1794823928,"closed_by":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","status":"confirmed","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjd9fQ%3D%3D
+query record 8: {"id":8,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51","reason_hash":"9f8f034fa9bd2e21fb47262ea86e582c867dec658bd245f45318fb2bba3d4e37","submitted_at":1794823933,"deadline":1794824533,"closed_at":1794823938,"closed_by":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","status":"disputed","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjh9fQ%3D%3D
+query record 9: {"id":9,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51","reason_hash":null,"submitted_at":1794823943,"deadline":1794824543,"closed_at":null,"closed_by":null,"status":"pending","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjl9fQ%3D%3D
+query record 10: {"id":10,"worker":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","employer":"me1hhqvymvnz5mz3jf5pg4ar4vxhyxsyrqr7tgwyf","report_hash":"44aed1d01618dc2827c3a754843816d54e6d377502d5b3de81f511785b63cf51","reason_hash":null,"submitted_at":1794823963,"deadline":1794823993,"closed_at":1794824007,"closed_by":"me1waez9g5atcv4ne9k7dkrrxg3zy79vfnz4gwwnl","status":"expired","employer_level":"two","worker_level":"none"}
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJyZWNvcmQiOnsiaWQiOjEwfX0%3D
+query count (after): 10
+  REST: https://beta-hub-1317.explorer-testnet.me/cosmwasm/wasm/v1/contract/me1kwhfggqzzjy3vnyvldymrrrmjcvxe8ajzlerhx3putherrht2xqsgfpjqc/smart/eyJjb3VudCI6e319
+balance main(umec) 79658508
+balance worker(umec) 9810000
+balance employer(umec) 19889997
+
+result: 4 PASS, 0 UNEXPECTED

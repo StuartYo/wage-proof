@@ -4,7 +4,10 @@
 //
 // Usage:
 //   node scripts/cw-e2e.mjs          groups (1)-(4)  -> docs/evidence/cw-c-e2e.txt
-//   node scripts/cw-e2e.mjs --full   new demo employer full flow (needs its ME ID >= one)
+//   node scripts/cw-e2e.mjs --full   full flow with an employer that has a ME ID (>= one). The faucet's
+//                                    Testnet ME ID service stopped writing on-chain after 2026-11-13, so the
+//                                    new Cosmos-key employer never got one; --full signs as the old demo
+//                                    employer (KYC_LEVEL_TWO, EVM key) via scripts/eth-signer.mjs.
 //                                    -> docs/evidence/cw-c-e2e-full.txt
 // Keys: main wallet from .env, demo accounts from .env.demo (DEMO_CW_*_MNEMONIC). Never printed.
 import { join } from "node:path";
@@ -13,6 +16,7 @@ import { toBase64, toUtf8 } from "@cosmjs/encoding";
 import { config, ROOT } from "./lib.mjs";
 import { hashReport } from "./hash-report.mjs";
 import { connect, broadcast, execMsg, loadDeploy, logger, readDemoMnemonic } from "./cw-lib.mjs";
+import { connectEthKey, readDemoKey } from "./eth-signer.mjs";
 
 const FULL = process.argv.includes("--full");
 const log = logger(join(ROOT, "docs", "evidence", FULL ? "cw-c-e2e-full.txt" : "cw-c-e2e.txt"));
@@ -33,7 +37,8 @@ const check = (ok, what) => { ok ? pass++ : fail++; log(`  ${ok ? "PASS" : "UNEX
 
 const main = await connect();
 const worker = await connect(readDemoMnemonic("DEMO_CW_WORKER_MNEMONIC"));
-const employer = await connect(readDemoMnemonic("DEMO_CW_EMPLOYER_MNEMONIC"));
+const employer = FULL ? await connectEthKey(readDemoKey("DEMO_EMPLOYER_KEY"), main.client.registry)
+  : await connect(readDemoMnemonic("DEMO_CW_EMPLOYER_MNEMONIC"));
 const q = async (msg) => main.client.queryContractSmart(C, msg);
 const blockTime = async () => Date.parse((await main.client.getBlock()).header.time) / 1000;
 
@@ -72,7 +77,8 @@ async function waitPastDeadline(id) {
   const r = await q({ record: { id } });
   for (let i = 0; i < 40; i++) {
     const t = await blockTime();
-    if (t > r.deadline) { log(`latest block time ${t} > deadline ${r.deadline}`); return; }
+    // contract time is whole seconds (block time floored) and the rule is strict `now > deadline`
+    if (Math.floor(t) > r.deadline) { log(`latest block time ${t} > deadline ${r.deadline}`); return; }
     await new Promise((s) => setTimeout(s, 3000));
   }
   throw new Error("deadline not passed after 120 s");
@@ -80,7 +86,7 @@ async function waitPastDeadline(id) {
 
 log(`# WageProof CosmWasm e2e ${FULL ? "--full " : ""}${new Date().toISOString()}`);
 log(`chain=${config.cosmosChainId} rpc=${config.hub.rpc} contract=${C} codeId=${loadDeploy().wageProof.codeId}`);
-log(`accounts: main=${main.address} worker=${worker.address} new-employer=${employer.address}`);
+log(`accounts: main=${main.address} worker=${worker.address} employer=${employer.address}${FULL ? " (old demo employer, EVM key, signed as ethsecp256k1)" : ""}`);
 log(`report_hash=${REPORT} (sha256 of demo/synthetic-report.json, synthetic data)`);
 await query("config", { config: {} });
 const before = await query("count (before)", { count: {} });
@@ -127,15 +133,16 @@ if (!FULL) {
     log("full flow waits for the new demo employer's ME ID; then run: node scripts/cw-e2e.mjs --full");
   }
 } else {
-  log("\n## --full: new demo employer full flow");
-  const me = await query("me_id NEW_EMP", { me_id: { address: NEW_EMP } });
+  log("\n## --full: employer with ME ID, full flow");
+  const EMP = employer.address;
+  const me = await query("me_id employer", { me_id: { address: EMP } });
   if (!me || me.level === "none") {
-    log(`STOP: new demo employer ${NEW_EMP} has no ME ID yet (level ${me?.level}, source ${me?.source}). Nothing sent.`);
+    log(`STOP: employer ${EMP} has no ME ID (level ${me?.level}, source ${me?.source}). Nothing sent.`);
     log.save(); process.exit(3);
   }
   await query("me_id worker", { me_id: { address: worker.address } });
   const sub = async (tag, window) => Number((await ok(`${tag} worker submit, ${window} s`, worker,
-    { submit: { report_hash: REPORT2, employer: NEW_EMP, deadline_seconds: window } })).id);
+    { submit: { report_hash: REPORT2, employer: EMP, deadline_seconds: window } })).id);
   const a = await sub("(F1)", 600);
   await ok(`(F1) employer confirms #${a}`, employer, { confirm: { id: a } });
   const b = await sub("(F2)", 600);
@@ -152,7 +159,7 @@ if (!FULL) {
 }
 
 await query("count (after)", { count: {} });
-for (const [n, w] of [["main", main], ["worker", worker], ["new-employer", employer]])
+for (const [n, w] of [["main", main], ["worker", worker], ["employer", employer]])
   log(`balance ${n}(umec)`, (await w.client.getBalance(w.address, config.denom)).amount);
 log(`\nresult: ${pass} PASS, ${fail} UNEXPECTED`);
 log.save();
