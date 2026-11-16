@@ -1,0 +1,510 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T11:50:10.058Z",
+  "title": "Design System: Wage Proof (工資對帳存證)",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "#08090a",
+        "tonalRamp": [
+          "#242628",
+          "#394047",
+          "#4f5963",
+          "#667380",
+          "#808c99",
+          "#a4adb6",
+          "#ccd1d6",
+          "#f2f2f3"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Work Surface",
+        "canonical": "#0f1011",
+        "tonalRamp": [
+          "#252627",
+          "#3c4044",
+          "#54595f",
+          "#6c737a",
+          "#858c93",
+          "#a8adb3",
+          "#ced1d4",
+          "#f2f2f3"
+        ]
+      },
+      "surface-1": {
+        "role": "neutral",
+        "displayName": "Surface 1",
+        "canonical": "#141516",
+        "tonalRamp": [
+          "#252627",
+          "#3d4043",
+          "#55595e",
+          "#6d7378",
+          "#878c92",
+          "#aaadb1",
+          "#cfd1d3",
+          "#f2f2f3"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Surface 2",
+        "canonical": "#18191a",
+        "tonalRamp": [
+          "#252627",
+          "#3d4042",
+          "#56595d",
+          "#6e7377",
+          "#888c91",
+          "#aaadb1",
+          "#cfd1d3",
+          "#f2f2f3"
+        ]
+      },
+      "surface-3": {
+        "role": "neutral",
+        "displayName": "Surface 3",
+        "canonical": "#1f2023",
+        "tonalRamp": [
+          "#252627",
+          "#3c3e44",
+          "#54575f",
+          "#6c6f7a",
+          "#858993",
+          "#a8abb2",
+          "#ced0d4",
+          "#f2f2f3"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#23252a",
+        "tonalRamp": [
+          "#252628",
+          "#3a3d46",
+          "#515661",
+          "#686e7d",
+          "#828897",
+          "#a6aab5",
+          "#cdcfd5",
+          "#f2f2f3"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#34343a",
+        "tonalRamp": [
+          "#252527",
+          "#3c3c43",
+          "#54545e",
+          "#6c6c79",
+          "#868693",
+          "#a9a9b2",
+          "#cfcfd4",
+          "#f2f2f3"
+        ]
+      },
+      "line-stronger": {
+        "role": "neutral",
+        "displayName": "Hairline Stronger",
+        "canonical": "#3e3e44",
+        "tonalRamp": [
+          "#252527",
+          "#3d3d43",
+          "#55555d",
+          "#6d6d78",
+          "#878792",
+          "#aaaab1",
+          "#cfcfd3",
+          "#f2f2f3"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#f7f8f8",
+        "tonalRamp": [
+          "#252828",
+          "#3c4444",
+          "#535f5f",
+          "#6b7a7a",
+          "#859494",
+          "#a8b3b3",
+          "#ced4d4",
+          "#f2f3f3"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "canonical": "#d0d6e0",
+        "tonalRamp": [
+          "#22252a",
+          "#333c4d",
+          "#47556c",
+          "#5b6d8a",
+          "#7586a4",
+          "#9da9be",
+          "#c8cfdb",
+          "#f1f2f4"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "canonical": "#8a8f98",
+        "tonalRamp": [
+          "#252627",
+          "#3c3f44",
+          "#54585f",
+          "#6b717a",
+          "#858a94",
+          "#a8acb3",
+          "#ced0d4",
+          "#f2f2f3"
+        ]
+      },
+      "ink-4": {
+        "role": "neutral",
+        "displayName": "Ink 4",
+        "canonical": "#7d828a",
+        "tonalRamp": [
+          "#252627",
+          "#3c3f43",
+          "#55585e",
+          "#6d7179",
+          "#868b92",
+          "#a9acb2",
+          "#cfd1d4",
+          "#f2f2f3"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Linear Lavender",
+        "canonical": "#5e6ad2",
+        "tonalRamp": [
+          "#1b1e31",
+          "#1c2364",
+          "#27318c",
+          "#3240b3",
+          "#4c59cd",
+          "#7f89db",
+          "#b7bdeb",
+          "#efeff6"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Pressed Lavender",
+        "canonical": "#4f5bc4",
+        "tonalRamp": [
+          "#1d1f30",
+          "#20275f",
+          "#2d3686",
+          "#3a45ac",
+          "#535fc5",
+          "#858dd6",
+          "#babfe8",
+          "#eff0f5"
+        ]
+      },
+      "status-pending": {
+        "role": "status",
+        "displayName": "Pending Yellow",
+        "canonical": "#f2c94c",
+        "tonalRamp": [
+          "#372f16",
+          "#775c09",
+          "#a6800c",
+          "#d6a510",
+          "#efbe29",
+          "#f4d167",
+          "#f9e5a9",
+          "#f8f5ed"
+        ]
+      },
+      "status-confirmed": {
+        "role": "status",
+        "displayName": "Confirmed Green",
+        "canonical": "#4cb782",
+        "tonalRamp": [
+          "#1e2e26",
+          "#255b40",
+          "#337f5a",
+          "#42a473",
+          "#5bbd8d",
+          "#8bd0ae",
+          "#bee5d1",
+          "#f0f5f2"
+        ]
+      },
+      "status-disputed": {
+        "role": "status",
+        "displayName": "Disputed Red",
+        "canonical": "#eb5757",
+        "tonalRamp": [
+          "#351717",
+          "#720e0e",
+          "#a01313",
+          "#cd1818",
+          "#e73232",
+          "#ee6d6d",
+          "#f5adad",
+          "#f7eded"
+        ]
+      },
+      "status-expired": {
+        "role": "status",
+        "displayName": "Expired Grey",
+        "canonical": "#8a8f98",
+        "tonalRamp": [
+          "#252627",
+          "#3c3f44",
+          "#54585f",
+          "#6b717a",
+          "#858a94",
+          "#a8acb3",
+          "#ced0d4",
+          "#f2f2f3"
+        ]
+      },
+      "primary-soft": {
+        "role": "primary",
+        "displayName": "Lavender Wash",
+        "canonical": "rgba(94, 106, 210, 0.16)",
+        "tonalRamp": [
+          "#1b1e31",
+          "#1c2364",
+          "#27318c",
+          "#3240b3",
+          "#4c59cd",
+          "#7f89db",
+          "#b7bdeb",
+          "#efeff6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "List page and detail panel titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default 14px text."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Nav, group headers, labels, buttons."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Meta, hints, footnotes, tags."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "IDs, amounts, times, hashes, block heights (mono, tabular)."
+      },
+      "clock": {
+        "displayName": "Clock",
+        "purpose": "Live deadline countdown."
+      }
+    },
+    "shadows": [
+      {
+        "name": "toast-lift",
+        "value": "0 8px 24px rgba(0,0,0,0.45)",
+        "purpose": "The toast, the only floating element."
+      },
+      {
+        "name": "focus-glow",
+        "value": "0 0 0 3px rgba(94,106,210,0.16)",
+        "purpose": "Text field focus wash with a lavender border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Hover transitions on rows, buttons, option cards (100 to 120ms)."
+      },
+      {
+        "name": "shimmer",
+        "value": "1.4s linear infinite",
+        "purpose": "Loading skeleton rows."
+      },
+      {
+        "name": "spin",
+        "value": "0.8s linear infinite",
+        "purpose": "Busy spinner."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transitions and animations disabled",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "1240px"
+      },
+      {
+        "name": "single-column",
+        "value": "960px"
+      },
+      {
+        "name": "mobile",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one lavender action per pane.",
+      "html": "<button class=\"ds-btn-primary\">Register report</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #5e6ad2;background:#5e6ad2;color:#fff;font:500 13px/1.5 Geist,sans-serif;cursor:pointer;transition:background 120ms cubic-bezier(.22,1,.36,1)}.ds-btn-primary:hover{background:#4f5bc4;border-color:#4f5bc4}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid rgba(94,106,210,.7);outline-offset:2px}"
+    },
+    {
+      "name": "Default and Ghost Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Surface 2 secondary button and transparent ghost.",
+      "html": "<button class=\"ds-btn\">Confirm</button> <button class=\"ds-btn ds-ghost\">Close</button>",
+      "css": ".ds-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid #34343a;background:#18191a;color:#f7f8f8;font:500 13px/1.5 Geist,sans-serif;cursor:pointer;transition:background 120ms}.ds-btn:hover{background:#1f2023;border-color:#3e3e44}.ds-btn:focus-visible{outline:2px solid rgba(94,106,210,.7);outline-offset:2px}.ds-ghost{background:transparent;border-color:transparent;color:#8a8f98}.ds-ghost:hover{background:#18191a;color:#f7f8f8}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "32px input with lavender focus wash and red invalid state.",
+      "html": "<input class=\"ds-field\" placeholder=\"Reason\" /> <input class=\"ds-field\" aria-invalid=\"true\" value=\"Too long\" />",
+      "css": ".ds-field{height:32px;border:1px solid #34343a;border-radius:8px;background:#141516;padding:0 10px;color:#f7f8f8;font:400 13px Geist,sans-serif}.ds-field::placeholder{color:#7d828a}.ds-field:focus{border-color:#5e6ad2;outline:none;box-shadow:0 0 0 3px rgba(94,106,210,.16)}.ds-field[aria-invalid=\"true\"]{border-color:#eb5757}"
+    },
+    {
+      "name": "Status Icons",
+      "kind": "chip",
+      "refersTo": "status-pending",
+      "description": "Four status icons; shape plus label, never colour alone.",
+      "html": "<div class=\"ds-st\"><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Waiting\"><circle cx=\"8\" cy=\"8\" r=\"6.3\" fill=\"none\" stroke=\"#f2c94c\" stroke-width=\"1.5\"/><path d=\"M8 8V4.4A3.6 3.6 0 0 1 11.2 9.7Z\" fill=\"#f2c94c\"/></svg><span>Waiting</span><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Confirmed\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#4cb782\"/><path d=\"M5 8.2l2 2 4-4.2\" fill=\"none\" stroke=\"#0f1011\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span>Confirmed</span><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Disputed\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#eb5757\"/><path d=\"M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8\" stroke=\"#0f1011\" stroke-width=\"1.7\" stroke-linecap=\"round\"/></svg><span>Disputed</span><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Expired\"><circle cx=\"8\" cy=\"8\" r=\"6.3\" fill=\"none\" stroke=\"#8a8f98\" stroke-width=\"1.5\"/><path d=\"M8 4.8V8l2.2 1.4\" fill=\"none\" stroke=\"#8a8f98\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg><span>Expired</span></div>",
+      "css": ".ds-i{width:16px;height:16px;flex:none;display:block}.ds-st{display:flex;align-items:center;gap:8px;color:#d0d6e0;font:13px Geist,sans-serif}"
+    },
+    {
+      "name": "Record Row",
+      "kind": "card",
+      "refersTo": "row",
+      "description": "Tracker row: icon, ID, title, amount, due. Selected row takes the lavender wash.",
+      "html": "<div class=\"ds-row\"><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Waiting\"><circle cx=\"8\" cy=\"8\" r=\"6.3\" fill=\"none\" stroke=\"#f2c94c\" stroke-width=\"1.5\"/><path d=\"M8 8V4.4A3.6 3.6 0 0 1 11.2 9.7Z\" fill=\"#f2c94c\"/></svg><span class=\"ds-id\">#18</span><span class=\"ds-t\">Overtime gap</span><span class=\"ds-amt\">NT$ 1,440</span><span class=\"ds-due\">00:42</span></div><div class=\"ds-row ds-sel\"><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Confirmed\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#4cb782\"/><path d=\"M5 8.2l2 2 4-4.2\" fill=\"none\" stroke=\"#0f1011\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"ds-id\">#17</span><span class=\"ds-t\">Overtime gap</span><span class=\"ds-amt\">NT$ 960</span><span class=\"ds-due\">12s</span></div>",
+      "css": ".ds-i{width:16px;height:16px;flex:none;display:block}.ds-row{display:grid;grid-template-columns:16px 52px minmax(0,1fr) 96px 104px;gap:0 12px;align-items:center;min-height:44px;padding:0 24px;border-bottom:1px solid #23252a;color:#f7f8f8;font:14px Geist,sans-serif;background:#0f1011;transition:background 120ms}.ds-row:hover{background:#141516}.ds-sel{background:rgba(94,106,210,.16)}.ds-id,.ds-amt,.ds-due{font-family:\"Geist Mono\",monospace;font-size:12.5px}.ds-id{color:#8a8f98}.ds-amt{text-align:right;font-weight:500}.ds-due{text-align:right;color:#f2c94c}.ds-sel .ds-due{color:#8a8f98}"
+    },
+    {
+      "name": "Group Header",
+      "kind": "custom",
+      "refersTo": "group-header",
+      "description": "Sticky 36px strip with status icon and mono count.",
+      "html": "<div class=\"ds-grp\"><svg class=\"ds-i\" viewBox=\"0 0 16 16\" role=\"img\" aria-label=\"Waiting\"><circle cx=\"8\" cy=\"8\" r=\"6.3\" fill=\"none\" stroke=\"#f2c94c\" stroke-width=\"1.5\"/><path d=\"M8 8V4.4A3.6 3.6 0 0 1 11.2 9.7Z\" fill=\"#f2c94c\"/></svg>Waiting for employer<span class=\"ds-m\">1</span></div>",
+      "css": ".ds-i{width:16px;height:16px;flex:none;display:block}.ds-grp{display:flex;align-items:center;gap:8px;height:36px;padding:0 24px;background:#141516;border-bottom:1px solid #23252a;font:500 13px Geist,sans-serif;color:#d0d6e0}.ds-m{font-family:\"Geist Mono\",monospace;color:#8a8f98}"
+    },
+    {
+      "name": "Attendance vs Payslip Bars",
+      "kind": "custom",
+      "refersTo": "surface-1",
+      "description": "Paired bars; the hatched red segment is the unpaid shortfall (data).",
+      "html": "<div class=\"ds-cmp\"><span class=\"ds-lab\">Attendance</span><div class=\"ds-bar\"><span class=\"ds-a\" style=\"width:100%\"></span></div><span class=\"ds-val\">48 h</span><span class=\"ds-lab\">Payslip</span><div class=\"ds-bar\"><span class=\"ds-p\" style=\"width:80%\"></span><span class=\"ds-g\" style=\"left:80%;width:20%\"></span></div><span class=\"ds-val\">38 h</span></div>",
+      "css": ".ds-cmp{display:grid;grid-template-columns:72px minmax(0,1fr) 56px;gap:8px 10px;align-items:center;font:13px Geist,sans-serif;width:360px}.ds-lab{color:#8a8f98}.ds-val{font:12.5px \"Geist Mono\",monospace;text-align:right;color:#d0d6e0}.ds-bar{position:relative;height:14px;background:#141516;border-radius:3px}.ds-bar span{position:absolute;top:0;bottom:0;left:0;border-radius:3px}.ds-a{background:#d0d6e0}.ds-p{background:#7d828a}.ds-g{background:repeating-linear-gradient(-45deg,rgba(235,87,87,.85) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px rgba(235,87,87,.9);border-radius:0 3px 3px 0}"
+    },
+    {
+      "name": "Deadline Clock and Track",
+      "kind": "custom",
+      "refersTo": "clock",
+      "description": "Mono countdown with a 6px filling track.",
+      "html": "<div class=\"ds-clock\"><span class=\"ds-big\">00:42</span><small>until deadline</small></div><div class=\"ds-track\"><span style=\"width:30%\"></span></div>",
+      "css": ".ds-clock{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;width:320px}.ds-big{font:600 28px/1 \"Geist Mono\",monospace;letter-spacing:-.5px;color:#f2c94c}.ds-clock small{font:13px Geist,sans-serif;color:#8a8f98}.ds-track{position:relative;height:6px;width:320px;background:#18191a;border-radius:3px}.ds-track span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#f2c94c}"
+    },
+    {
+      "name": "Option Card with Gate Ladder",
+      "kind": "card",
+      "refersTo": "option-card-selected",
+      "description": "Radio card; checked state is lavender border and wash. Gate ladder shows ME ID rank against the required level.",
+      "html": "<label class=\"ds-opt\"><span class=\"ds-ot\">Demo employer<span class=\"ds-gate\"><span class=\"ds-steps\"><span class=\"on\"></span><span class=\"on\"></span><span></span><i style=\"left:22px\"></i></span><small>Meets contract requirement</small></span></span></label>",
+      "css": ".ds-opt{display:block;width:360px;padding:12px 14px;border:1px solid #5e6ad2;border-radius:12px;background:rgba(94,106,210,.16);color:#f7f8f8;font:500 13.5px Geist,sans-serif}.ds-ot{display:flex;justify-content:space-between;align-items:center}.ds-gate{text-align:right}.ds-steps{display:inline-grid;grid-template-columns:repeat(3,22px);gap:2px;position:relative}.ds-steps span{height:6px;border-radius:2px;background:#1f2023}.ds-steps span.on{background:#4cb782}.ds-steps i{position:absolute;top:-4px;height:14px;border-left:1px dashed #d0d6e0}.ds-gate small{display:block;font:400 12px Geist,sans-serif;margin-top:6px;color:#4cb782}"
+    },
+    {
+      "name": "Refusal Note",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "Inline contract refusal: red border and wash, plain-language lead, mono error code.",
+      "html": "<div class=\"ds-note\"><b>Contract refused this registration.</b><br>Employer ME ID is below the required level. <code>EmployerNotVerified</code></div>",
+      "css": ".ds-note{width:360px;padding:12px 14px;border-radius:12px;border:1px solid rgba(235,87,87,.4);background:rgba(235,87,87,.07);color:#d0d6e0;font:13px/1.6 Geist,sans-serif}.ds-note b{color:#ff8f8f;font-weight:600}.ds-note code{font:12px \"Geist Mono\",monospace;color:#8a8f98}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Open Ticket",
+    "overview": "Wage records are drawn as an issue tracker. Each record is a row that someone owes an answer on, with a deadline running against it. The interface refuses the landing-page arrangement (no hero, story section, stats band, or card grid) because the only job is to let a reviewer register a report, answer as the employer, and read the contract's refusal in under a minute. It is an Operate-mode product surface, dense and calm, in Traditional Chinese.\n\nTokens come from the Linear app system (via the design-md-library reference): a near-black canvas, a four-step charcoal surface ladder, 1px hairlines, and one lavender accent. Geist and Geist Mono stand in for Linear's own faces. Two values were adjusted from the reference for contrast: primary hover is darker (`#4f5bc4`) so white text keeps contrast on hover, and the quietest text is lifted to `#7d828a`.\n\nStatus is the only place colour carries meaning, and it never carries it alone: every status is a drawn icon whose shape differs, paired with a text label. Everything else is greyscale plus a single lavender.",
+    "keyCharacteristics": [
+      "Three-pane tracker: sidebar, grouped list, detail or composer panel.",
+      "Flat tonal depth: surfaces step up in lightness, hairlines separate, shadows are nearly absent.",
+      "Geist for words, Geist Mono for every ID, amount, hash, block height and clock.",
+      "Pending is a pie that fills as the deadline runs out, driven by chain time.",
+      "Data is drawn, not decorated: bars, hatched shortfall, deadline track and gate ladder all encode values."
+    ],
+    "rules": [
+      {
+        "name": "The Lavender Is Rare Rule",
+        "body": "Lavender appears only on the primary action, the selected row or option (as the wash), and focus. It never colours text, icons, status, links or decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Colour Alone Rule",
+        "body": "A status is always its own icon shape plus a text label (等待回應, 雇主確認, 雇主異議, 逾期未回應). Colour reinforces and is never the sole signal; this is a product accessibility commitment.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Colours Are Reserved Rule",
+        "body": "The four status hues mean only their status (and, for red and green, the gate ladder and errors that restate it). They are not used as brand or accent colours.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono For Values Rule",
+        "body": "Any ID, amount, timestamp, hash or block number is Geist Mono with tabular numerals. Words never are.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence-Case Label Rule",
+        "body": "Section and nav headings are 12px to 13px, weight 500, sentence case, in Ink 3 or Ink 4. There are no uppercase tracked eyebrows or kickers in this system.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Not Shadow Rule",
+        "body": "Separate regions with a 1px hairline or a one-step surface change. A card never gets a shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** express every status as its own icon shape plus text label; keep the pie filling in real time from chain time.",
+      "**Do** use lavender only for the primary action, the selected row or option wash, and focus.",
+      "**Do** set IDs, amounts, hashes, times, block numbers and the countdown in Geist Mono with tabular numerals.",
+      "**Do** separate regions with 1px hairlines and one-step surface changes; keep the toast as the only shadowed element.",
+      "**Do** draw values as data (bars, hatched shortfall, tracks, the gate ladder) rather than decorating with them.",
+      "**Do** keep the 44px row, 36px group header and 52px panel header cadence, and the 440px panel.",
+      "**Do** label demo data as fictional wherever it is shown."
+    ],
+    "donts": [
+      "**Don't** add a hero, story section, stats band or card grid; the tracker is the entire surface.",
+      "**Don't** signal status or errors by colour alone.",
+      "**Don't** use status colours or lavender as decoration, or lavender for links and text.",
+      "**Don't** add uppercase tracked eyebrows or kickers above headings.",
+      "**Don't** use the hatched pattern for anything except an unpaid shortfall.",
+      "**Don't** put a shadow on a card, row or panel."
+    ]
+  }
+}
