@@ -1,5 +1,5 @@
 // Build the static part of the online demo into public/ (used by Vercel, see vercel.json).
-// Copies only: web/index.html, web/app.js, the two synthetic reports, the ethers browser build.
+// Copies only: web/index.html, web/app.js, the two synthetic reports.
 // No keys, no .env, no deployment secrets are ever copied.
 import { mkdirSync, copyFileSync, rmSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -12,7 +12,6 @@ const FILES = [
   ["web/app.js", "app.js"],
   ["demo/synthetic-report.json", "demo/synthetic-report.json"],
   ["demo/synthetic-report-2.json", "demo/synthetic-report-2.json"],
-  ["node_modules/ethers/dist/ethers.umd.min.js", "vendor/ethers.umd.min.js"],
 ];
 
 rmSync(OUT, { recursive: true, force: true });

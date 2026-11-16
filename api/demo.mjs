@@ -1,41 +1,37 @@
-// Server-signed demo actions, so a judge needs no wallet and no test coins.
-// Exactly four actions: submit / confirm / dispute / markExpired. Contract address, chain id,
-// gas limits and the two signer accounts are fixed on the server. Whether an action is allowed
-// (who, which state, which deadline) is decided ONLY by the contract: we simulate the call,
-// and if the contract rejects it we return the contract's error name without sending.
-// One extra rule lives here (not in the contract, because the EVM cannot read the ME ID module):
-// on submit, the chosen employer must hold an ME ID of at least SETTINGS.minEmployerLevel,
-// read live from Hub REST; otherwise "employer_not_verified" and nothing is sent.
+// Server-signed demo actions on the CosmWasm WageProof contract, so a judge needs no wallet and no test coins.
+// Exactly four actions: submit / confirm / dispute / markExpired. Contract address, chain and the two signer
+// accounts are fixed on the server. Whether an action is allowed (who, which state, which deadline, and
+// whether the employer holds an ME ID) is decided ONLY by the contract: we simulate the call on the chain
+// node, and if the contract rejects it we return the contract's error name without sending.
+// The ME ID rule lives inside the contract (it queries the ME ID module itself), not on this server.
 //
 // Abuse limits are in memory (per server instance): they reset on a cold start and are not
 // shared between instances. See docs/day2-online-demo.md.
-import { ethers } from "ethers";
-import { SETTINGS, ABI, STATUS, LEVEL_RANK, verifyUrl, clientIp, json, readCapped, meIdLevel } from "./_lib.mjs";
+import { SETTINGS, clientIp, json, readCapped } from "./_lib.mjs";
+import { CW, txUrl, connectMnemonic, connectEthKey, contractErrorName, feeForGas } from "./_cwbundle.mjs";
 
 const LEVEL_LABEL = { none: "未驗證 None", one: "真人驗證 Real-person", two: "進階驗證 Advanced" };
 const EMPLOYER_CHOICES = ["verified", "unverified"];
-function employerAddress(choice, s) {
-  return choice === "verified" ? s.employer.address : SETTINGS.unverifiedEmployer;
-}
-const pick = (r) => (r.ok
-  ? { ok: true, level: r.level, label: LEVEL_LABEL[r.level], kycLevel: r.kycLevel, status: r.status, did: r.did, me1: r.me1, queryUrl: r.queryUrl, checkedAt: r.checkedAt }
-  : { ok: false, code: r.code, message: r.message, httpStatus: r.httpStatus ?? null, me1: r.me1, queryUrl: r.queryUrl });
-
+const UNVERIFIED = "me1mhyngg3dww60msw6dej4mkzheewjck86450e7g"; // no key exists for it; Hub answers "DID not found"
 const HEX32 = /^0x[0-9a-fA-F]{64}$/;
-const iface = new ethers.Interface(ABI);
-const provider = new ethers.JsonRpcProvider(SETTINGS.upstreamRpc, SETTINGS.chainId, { staticNetwork: true, batchMaxCount: 1 });
+const MIN_BALANCE_UMEC = 200000n;   // below this the demo stops sending
 
-let signers = null;
+let signersP = null;
 function getSigners() {
-  if (signers) return signers;
-  const w = process.env.DEMO_WORKER_KEY, e = process.env.DEMO_EMPLOYER_KEY;
-  if (!w || !e) return null;
-  signers = { worker: new ethers.Wallet(w, provider), employer: new ethers.Wallet(e, provider) };
-  return signers;
+  const m = process.env.DEMO_CW_WORKER_MNEMONIC, e = process.env.DEMO_EMPLOYER_KEY;
+  if (!m || !e) return null;
+  if (!signersP) {
+    signersP = (async () => {
+      const worker = await connectMnemonic(m.trim());
+      const employer = await connectEthKey(e.trim(), worker.registry);
+      return { worker, employer };
+    })().catch((err) => { signersP = null; throw err; });
+  }
+  return signersP;
 }
 
 // ---- in-memory limits ----
-const perIp = new Map();               // ip -> [timestamps ms]
+const perIp = new Map();
 let day = "", dayCount = 0;
 function takeQuota(ip) {
   const now = Date.now();
@@ -53,7 +49,7 @@ function takeQuota(ip) {
   return { ok: true };
 }
 
-// one queue per signer inside this instance, so two requests do not race for the same nonce
+// one queue per signer inside this instance, so two requests do not race for the same sequence number
 const queues = { worker: Promise.resolve(), employer: Promise.resolve() };
 function serial(who, fn) {
   const run = queues[who].then(fn, fn);
@@ -70,43 +66,54 @@ function parseAction(b) {
       const secs = Number(b.deadlineSeconds);
       if (typeof b.reportHash !== "string" || !HEX32.test(b.reportHash)) return { error: "reportHash must be 0x + 64 hex" };
       if (!SETTINGS.allowedWindows.includes(secs)) return { error: `deadlineSeconds must be one of ${SETTINGS.allowedWindows.join("/")}` };
-      // employer: only a key from the server's fixed list (default "verified"); never a free address
       const choice = b.employer === undefined ? "verified" : b.employer;
       if (!EMPLOYER_CHOICES.includes(choice)) return { error: `employer must be one of ${EMPLOYER_CHOICES.join("/")}` };
-      return { who: "worker", fn: "submit", employerChoice: choice, args: (s) => [b.reportHash, employerAddress(choice, s), secs] };
+      return { who: "worker", employerChoice: choice,
+        msg: (s) => ({ submit: { report_hash: b.reportHash.slice(2).toLowerCase(), employer: choice === "verified" ? s.employer.address : UNVERIFIED, deadline_seconds: secs } }) };
     }
     case "confirm":
       if (!idOk) return { error: "id must be a positive integer" };
-      return { who: "employer", fn: "confirm", args: () => [id] };
+      return { who: "employer", msg: () => ({ confirm: { id } }) };
     case "dispute":
       if (!idOk) return { error: "id must be a positive integer" };
       if (typeof b.reasonHash !== "string" || !HEX32.test(b.reasonHash)) return { error: "reasonHash must be 0x + 64 hex" };
-      return { who: "employer", fn: "dispute", args: () => [id, b.reasonHash] };
+      return { who: "employer", msg: () => ({ dispute: { id, reason_hash: b.reasonHash.slice(2).toLowerCase() } }) };
     case "markExpired":
       if (!idOk) return { error: "id must be a positive integer" };
-      return { who: "worker", fn: "markExpired", args: () => [id] };
+      return { who: "worker", msg: () => ({ mark_expired: { id } }) };
     default:
       return { error: "action must be submit | confirm | dispute | markExpired" };
   }
 }
 
-function revertName(e) {
-  const data = e?.data ?? e?.info?.error?.data ?? e?.error?.data;
-  if (typeof data === "string" && data.startsWith("0x")) {
-    try { const d = iface.parseError(data); if (d) return d.name; } catch {}
+const execMsg = (sender, msg) => ({ typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+  value: { sender, contract: CW.contract, msg: new TextEncoder().encode(JSON.stringify(msg)), funds: [] } });
+
+// the contract's own view of an address's ME ID (it calls the ME ID module on chain)
+async function meIdView(client, address) {
+  try {
+    const r = await client.queryContractSmart(CW.contract, { me_id: { address } });
+    return { ok: true, address, level: r.level, label: LEVEL_LABEL[r.level] ?? r.level, kycLevel: r.kyc_level || null,
+      status: r.status || (r.source === "not_found" ? "DID not found" : null), did: r.did || null, source: r.source,
+      queryUrl: `${CW.rest}/metaearth/did/did?address=${address}`, checkedAt: new Date().toISOString() };
+  } catch (e) {
+    return { ok: false, address, message: String(e?.message || e).slice(0, 160), queryUrl: `${CW.rest}/metaearth/did/did?address=${address}` };
   }
-  return e?.revert?.name || e?.shortMessage || String(e?.message || e).slice(0, 120);
 }
 
 export async function GET() {
-  const s = getSigners();
+  let s = null, err = null;
+  try { s = await getSigners(); } catch (e) { err = String(e?.message || e).slice(0, 120); }
+  let minEmployerLevel = "one";
+  try { if (s) minEmployerLevel = (await s.worker.client.queryContractSmart(CW.contract, { config: {} })).min_employer_level; } catch {}
   return json(200, {
-    chainId: SETTINGS.chainId, contract: SETTINGS.contract, hubRest: SETTINGS.hubRest,
+    network: "cosmwasm", chainId: CW.chainId, contract: CW.contract, codeId: CW.codeId, hubRest: CW.rest,
+    storeTx: CW.storeTx, instTx: CW.instTx, rejectProofTx: CW.rejectProofTx,
     worker: s?.worker.address ?? null, employer: s?.employer.address ?? null,
-    windows: SETTINGS.allowedWindows, abi: ABI,
-    employers: s ? { verified: s.employer.address, unverified: SETTINGS.unverifiedEmployer } : null,
-    minEmployerLevel: SETTINGS.minEmployerLevel,
+    employers: s ? { verified: s.employer.address, unverified: UNVERIFIED } : null,
+    windows: SETTINGS.allowedWindows, minEmployerLevel,
     limits: { writesPerIpPerMinute: SETTINGS.writesPerIpPerMinute, writesPerDay: SETTINGS.writesPerDay, note: "in-memory, per server instance; resets on cold start" },
+    ...(err ? { signerError: err } : {}),
   });
 }
 
@@ -118,65 +125,53 @@ export async function POST(request) {
   const act = parseAction(body);
   if (act.error) return json(400, { ok: false, code: "bad_request", message: act.error });
 
-  const s = getSigners();
+  let s;
+  try { s = await getSigners(); } catch (e) { return json(502, { ok: false, code: "upstream_error", message: String(e?.message || e).slice(0, 160) }); }
   if (!s) return json(503, { ok: false, code: "not_configured", message: "示範帳號未設定（demo signer not configured）" });
 
   const q = takeQuota(clientIp(request));
   if (!q.ok) return json(429, { ok: false, code: q.code, message: q.message }, q.retryAfter ? { "retry-after": String(q.retryAfter) } : {});
 
   const signer = s[act.who];
-  const contract = new ethers.Contract(SETTINGS.contract, ABI, signer);
-  const args = act.args(s);
+  const msg = act.msg(s);
+  const m = execMsg(signer.address, msg);
 
-  // real-person gate (submit only): read both parties' ME ID level from Hub REST right now.
-  // Employer below minEmployerLevel -> no transaction. Lookup failure -> no transaction (never guessed).
+  // submit: show what the CONTRACT sees for both parties (display only; the contract enforces the rule)
   let meId = null;
-  if (act.fn === "submit") {
-    const employerAddr = args[1];
-    const [emp, wrk] = await Promise.all([meIdLevel(employerAddr), meIdLevel(s.worker.address)]);
-    meId = { rule: `employer level >= ${SETTINGS.minEmployerLevel}`, minEmployerLevel: SETTINGS.minEmployerLevel,
-      employer: { choice: act.employerChoice, address: employerAddr, ...pick(emp) },
-      worker: { address: s.worker.address, ...pick(wrk) } };
-    if (!emp.ok) {
-      return json(503, { ok: false, code: "meid_lookup_failed", action: "submit", sent: false, meId,
-        message: `查不到雇主的 ME ID 等級（${emp.message}），無法判斷，所以沒有送出交易` });
-    }
-    if (LEVEL_RANK[emp.level] < LEVEL_RANK[SETTINGS.minEmployerLevel]) {
-      return json(403, { ok: false, code: "employer_not_verified", action: "submit", sent: false, meId,
-        found: emp.kycLevel ?? emp.status, queryUrl: emp.queryUrl,
-        message: `雇主 ${employerAddr} 的 ME ID 等級是「${LEVEL_LABEL[emp.level]}」（節點回：${emp.kycLevel ?? emp.status}），規則要求至少「${LEVEL_LABEL[SETTINGS.minEmployerLevel]}」，所以沒有送出交易` });
-    }
+  if (body.action === "submit") {
+    const [emp, wrk, cfg] = await Promise.all([meIdView(s.worker.client, msg.submit.employer), meIdView(s.worker.client, s.worker.address),
+      s.worker.client.queryContractSmart(CW.contract, { config: {} }).catch(() => null)]);
+    const min = cfg?.min_employer_level ?? "one";
+    meId = { rule: `contract: employer ME ID level >= ${min}`, enforcedBy: "contract", minEmployerLevel: min,
+      employer: { choice: act.employerChoice, ...emp }, worker: wrk };
   }
 
   try {
     return await serial(act.who, async () => {
-      const bal = await provider.getBalance(signer.address);
-      if (bal < SETTINGS.minBalanceWei) {
-        return json(503, { ok: false, code: "out_of_funds", message: "示範額度用完（demo test coins used up）", signer: signer.address });
-      }
-      // the contract decides: simulate first, send only if the contract would accept it
-      try { await contract[act.fn].staticCall(...args); }
-      catch (e) { return json(409, { ok: false, code: "contract_rejected", action: body.action, contractError: revertName(e), message: `合約拒絕：${revertName(e)}`, ...(meId ? { meId } : {}) }); }
+      const bal = BigInt((await signer.client.getBalance(signer.address, CW.denom)).amount);
+      if (bal < MIN_BALANCE_UMEC) return json(503, { ok: false, code: "out_of_funds", message: "示範額度用完（demo test coins used up）", signer: signer.address });
 
-      const tx = await contract[act.fn](...args, {
-        gasLimit: SETTINGS.gasLimit[act.fn],
-        maxFeePerGas: SETTINGS.maxFeePerGasWei,
-        maxPriorityFeePerGas: 0n,
-      });
-      const rc = await tx.wait(1, SETTINGS.receiptWaitMs).catch(() => null);
-      const out = { ok: true, action: body.action, signer: signer.address, txHash: tx.hash, verifyUrl: verifyUrl(tx.hash) };
-      if (meId) out.meId = meId;
-      if (!rc) return json(202, { ...out, receipt: "pending", message: "交易已送出，尚未出塊" });
-      out.blockNumber = rc.blockNumber;
-      out.receiptStatus = rc.status;
-      let id = body.id;
-      if (act.fn === "submit") {
-        for (const l of rc.logs) {
-          try { const ev = iface.parseLog(l); if (ev?.name === "Submitted") id = Number(ev.args.id); } catch {}
-        }
+      // the contract decides: simulate on the chain node first, send only if the contract would accept it
+      let gas;
+      try { gas = await signer.client.simulate(signer.address, [m], ""); }
+      catch (e) {
+        const name = contractErrorName(e);
+        if (!name) return json(502, { ok: false, code: "upstream_error", message: String(e?.message || e).slice(0, 160) });
+        const detail = (String(e.message).match(/Generic error: (.*?): execute wasm contract failed/) || [])[1] || name;
+        const code = name === "EmployerNotVerified" ? "employer_not_verified" : "contract_rejected";
+        return json(code === "employer_not_verified" ? 403 : 409, { ok: false, code, action: body.action, sent: false,
+          contractError: name, contractMessage: detail, message: `合約拒絕：${name}`, rejectProofUrl: txUrl(CW.rejectProofTx), ...(meId ? { meId } : {}) });
       }
+
+      const res = await signer.client.signAndBroadcast(signer.address, [m], feeForGas(Math.ceil(gas * 1.4)), "");
+      const out = { ok: res.code === 0, action: body.action, signer: signer.address, txHash: res.transactionHash, verifyUrl: txUrl(res.transactionHash), blockNumber: res.height };
+      if (meId) out.meId = meId;
+      if (res.code !== 0) return json(409, { ...out, code: "contract_rejected", contractError: contractErrorName({ message: res.rawLog }), message: String(res.rawLog).slice(0, 200) });
+      const wasm = Object.fromEntries((res.events || []).filter((e) => e.type === "wasm").flatMap((e) => e.attributes).map((a) => [a.key, a.value]));
+      const id = Number(wasm.id ?? body.id);
       out.id = id;
-      if (id) out.status = STATUS[Number(await contract.effectiveStatus(id))];
+      if (wasm.employer_level) out.levelsStoredOnChain = { employer: wasm.employer_level, worker: wasm.worker_level };
+      try { out.status = await s.worker.client.queryContractSmart(CW.contract, { effective_status: { id } }); } catch {}
       return json(200, out);
     });
   } catch (e) {

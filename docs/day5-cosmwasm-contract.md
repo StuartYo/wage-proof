@@ -91,3 +91,13 @@
 - `scripts/cw-e2e.mjs`：測試網實跑（預設跑 (1)～(4)；`--full` 跑新示範雇主完整流程）
 
 上鏈花費：主錢包 79,790,032 → 79,560,508 umec（部署）；勞工示範帳號 10,000,000 → 9,940,000 umec（6 筆交易）。
+
+## 2026-11-16 晚：線上示範改接 CosmWasm 合約
+
+- 水龍頭的 Testnet ME ID 服務從 2026-11-13 02:21 UTC（高度 5291381，最後一筆 `/metaearth.kyc.MsgApprove`）之後沒有再上鏈；`/faucet/kyc/auth` 收件回 200，但 `/faucet/kyc/info` 一直是 `UNVERIFIED_AUTH`。新產生的 Cosmos 金鑰雇主因此拿不到模擬身分。
+- 繞法：`api/_cw.mjs` 的 `connectEthKey` 讓舊示範雇主（EVM 金鑰、KYC_LEVEL_TWO）用 ethsecp256k1 簽 Cosmos 交易（簽 keccak256(signBytes)，pubkey 型別 `/ethermint.crypto.v1.ethsecp256k1.PubKey`）。`cw-e2e --full` 4 PASS 0 UNEXPECTED（`docs/evidence/cw-c-e2e-full.txt`）。
+- 線上示範 `https://wage-proof.vercel.app/` 改接 CosmWasm 合約：雇主 ME ID 規則由合約自己查、自己拒絕（`EmployerNotVerified`），伺服器只在節點上模擬，合約拒絕就不送。網頁直接從 Hub REST 讀合約（list／effective_status／me_id）與交易（依 `wasm.id` 事件查）。
+- Vercel 的函式載入器不能 `require()` CosmJS 依賴的純 ESM `@noble/hashes`（ERR_REQUIRE_ESM），所以 `scripts/bundle-api.mjs` 用 esbuild 把 `api/_cw.mjs` 打包成 `api/_cwbundle.mjs`（已提交；改 `_cw.mjs` 後要重跑）。
+- Vercel 新增環境變數 `DEMO_CW_WORKER_MNEMONIC`（敏感，從 `.env.demo` 以管線餵入）。示範勞工由部署帳號補 0.5 測試 MEC（tx 74A140E8…6D4D）。
+- 線上實測（他的 Chrome，2026-11-16 18:46～18:49）：選未驗證雇主→合約拒絕、不產生紀錄；已驗證雇主登記 #13（30 秒）→逾期→記為逾期成功；登記 #14（1 小時）→切雇主→確認成功。
+- EVM 版合約 `0x07C0…23E0` 仍在鏈上；退回 EVM 版示範＝重新部署 commit 7b7ccd6 的版本（`api/demo.mjs`、`web/app.js`）。
