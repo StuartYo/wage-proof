@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="light">
 <meta name="description" content="薪水少算了，送一張補薪單給老闆。老闆在 ME Network 上補發或提出異議，每一步都有交易可查。">
 <title>補薪單｜工資對帳存證・ME Network 測試網</title>
 <link rel="icon" href="data:,">
@@ -339,6 +339,192 @@ code { font-size: .9em; word-break: break-all; }
 }
 .side-label.ev-label { display: flex; }
 @media (max-width: 1359px) { .side-label.ev-label { margin: 0 0 6px; color: #fff; font-size: 15px; font-weight: 800; } }
+
+/* ================= v4: Kombai Gallery templates =================
+   page + worker phone: Solvane (checkout/ios/9)   boss phone: Meridian (checkout/ios/5)   chain list: Inkwell (notifications/ios/5) */
+:root {
+  --stage: #dfe7e2; --stage-2: #ffffff; --stage-line: #c9d4ce; --stage-ink: #151c18; --stage-mute: #525c57;
+  --canvas: #f7fefa; --soft: #e8efeb; --ink: #151c18; --body: #525c57; --mute: #88908b; --line: #dee6e1;
+  --teal: #0e9484; --teal-deep: #0b7568; --teal-soft: #3e8c81; --teal-pale: #e1f1ed;
+  --primary: #0e9484; --ink-deep: #12333a; --worker: #9cc7bd; --accent: #0e9484;
+  --paid: #0e9484; --paid-deep: #0b7568; --primary-pale: #e1f1ed;
+  --m-ink: #12333a; --m-mute: #526f75; --m-dash: #e3e3e3; --m-cancel: #ebebeb;
+}
+body { background: var(--stage); color: var(--stage-ink); }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+
+/* header + guide line on the light page */
+.brand h1 { color: var(--ink); font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.brand span { color: var(--body); }
+.now { color: var(--ink); font-weight: 600; }
+.now b { color: var(--teal-deep); font-weight: 800; }
+.now .steptag { color: var(--mute); font-weight: 600; letter-spacing: .04em; }
+.side-label { color: var(--body); font-size: 13px; font-weight: 600; letter-spacing: .12em; }
+.chip { background: var(--worker); border-radius: 50%; }
+.chip.b { background: var(--teal); }
+.chip.e { background: var(--ink); }
+
+/* phones: bare screens like the templates (no border), soft lift off the page */
+.phone { --px: 20px; --pb: 18px; background: var(--canvas); color: var(--ink); box-shadow: 0 1px 2px rgba(21, 28, 24, .06), 0 18px 40px -24px rgba(21, 28, 24, .28); }
+.phone::before { color: var(--ink); font: 600 15px/1 var(--font); }
+@keyframes arrive { 0% { box-shadow: 0 0 0 0 var(--teal); } 25% { box-shadow: 0 0 0 5px var(--teal); } 100% { box-shadow: 0 0 0 0 rgba(14, 148, 132, 0); } }
+
+/* ---- worker phone: Solvane ---- */
+.eyebrow { color: var(--body); font-size: 14px; }
+.title { font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.12; margin-top: 6px; }
+.amt { font-weight: 700; letter-spacing: -.035em; font-size: 54px; margin: 14px 0 6px; }
+.amt small { font-size: 24px; font-weight: 600; }
+.amt.md { font-size: 40px; }
+.why { color: var(--body); font-size: 16px; }
+.lab { font-size: 12.5px; font-weight: 600; letter-spacing: .16em; color: var(--mute); margin-bottom: 8px; }
+.field { margin-top: 16px; }
+.to { background: none; border-radius: 0; padding: 0; min-height: 0; gap: 14px; justify-content: flex-start; }
+.to { display: grid; grid-template-columns: 46px minmax(0, 1fr); column-gap: 14px; row-gap: 4px; align-items: center; }
+.to .thumb { grid-row: 1 / span 2; }
+.to b { font-size: 17px; font-weight: 500; letter-spacing: -.01em; align-self: end; }
+.to .badge { justify-self: start; align-self: start; }
+.thumb { width: 46px; height: 46px; flex: none; border-radius: 8px; background: #3f6c69; color: #f7fefa; display: grid; place-items: center; }
+.thumb .i { width: 22px; height: 22px; }
+.badge.ok { background: var(--teal-pale); color: var(--teal-deep); }
+.badge.wait { background: var(--soft); }
+.seg { background: var(--soft); }
+.seg span { color: var(--body); }
+.seg input:checked + span { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(21, 28, 24, .14); }
+.link { color: var(--ink); text-decoration-color: #b6beb9; }
+.fine, .note { color: var(--mute); }
+.hint { color: var(--body); }
+.bars .v { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: 14px; }
+
+/* buttons: Meridian pills (teal confirm, grey cancel), Solvane soft drop shadow on the main one */
+.btn { min-height: 54px; border-radius: 9999px; font: 700 17px/1.2 var(--font); letter-spacing: .01em; }
+.btn.primary { background: var(--teal); color: #fff; box-shadow: 0 18px 32px -20px rgba(11, 117, 104, .75); }
+.btn.primary:hover:not(:disabled) { background: var(--teal-deep); }
+.btn:disabled { background: var(--soft); color: var(--body); box-shadow: none; }
+.btn.second { background: var(--m-cancel); color: var(--teal-deep); }
+.btn.second:hover:not(:disabled) { background: #e0e0e0; }
+.btn.ink { background: var(--m-ink); }
+
+/* progress list */
+.steps li { color: var(--mute); }
+.dot { box-shadow: inset 0 0 0 2px var(--line); }
+.done > .dot { background: var(--teal); color: #fff; }
+.track li:not(:last-child)::before { background: var(--line); }
+.track li.done:not(:last-child)::before { background: var(--teal); }
+.track .wait > .dot, .track li.wait .dot { background: #fff; color: var(--teal-deep); box-shadow: inset 0 0 0 2px var(--teal); }
+.track b { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.track .sub { color: var(--body); }
+
+/* receipt rows: Solvane list */
+.receipt { border-top: 1px solid var(--line); }
+.receipt summary { font-weight: 600; font-size: 16px; }
+.kv dt { color: var(--mute); }
+.big.paid { background: var(--teal); }
+.res { font-weight: 700; letter-spacing: -.02em; }
+.bal { background: var(--teal-pale); }
+.bal .mono b { color: var(--teal-deep); }
+
+/* ---- boss phone: Meridian ---- */
+#boss { background: linear-gradient(180deg, #f6f6f6 0%, #eaeaea 60%, #e3e3e3 100%); color: var(--m-ink); }
+#boss::before { color: var(--m-ink); }
+.btop { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.btop .name { color: var(--m-mute); }
+.mtear { position: relative; margin: 46px calc(-1 * var(--px)) 0; height: 8px; flex: none; }
+.zig { display: block; width: 100%; height: 8px; }
+.micon { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 16px; background: #fff;
+  box-shadow: 0 12px 28px rgba(18, 51, 58, .16), 0 2px 6px rgba(18, 51, 58, .08); display: grid; place-items: center; color: var(--m-ink); z-index: 1; }
+.micon .i { width: 30px; height: 30px; }
+.micon .ini { font-size: 26px; font-weight: 700; }
+.micon.quiet { color: #b9c4c6; }
+.micon.paid { color: var(--teal); }
+.micon.no { color: #c62f35; }
+.micon.late { color: var(--m-mute); }
+.msheet { flex: 1 1 auto; display: flex; flex-direction: column; background: #fff; margin: 0 calc(-1 * var(--px)) calc(-1 * var(--pb)); padding: 46px var(--px) var(--pb); border-radius: 0 0 36px 36px; color: var(--m-ink); }
+.mtitle { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.msub { text-align: center; margin-top: 8px; font-size: 16px; font-weight: 500; color: var(--teal-soft); }
+.mnote { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; text-align: center; font-size: 15px; color: var(--m-mute); }
+.mnote .i { width: 16px; height: 16px; }
+.mnote .mono { font-weight: 700; color: var(--m-ink); }
+.mrows { margin: 18px 0 0; }
+.mrows div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; }
+.mrows dt { font-size: 16px; color: var(--m-mute); }
+.mrows dd { margin: 0; font-size: 16px; font-weight: 600; color: var(--m-ink); font-variant-numeric: tabular-nums; text-align: right; }
+.mrows a.ext { min-height: 0; font-weight: 600; }
+.mdiv { border: 0; border-top: 2px dashed var(--m-dash); margin: 10px 0; }
+.mconv { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 2px 0; font-size: 16px; color: var(--m-mute); }
+.mconv .s { margin-top: 4px; font-size: 13px; color: #617b80; }
+.mconv .v { font-weight: 600; color: var(--m-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mtotal { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; font-size: 20px; font-weight: 700; color: var(--m-ink); font-variant-numeric: tabular-nums; }
+.msheet .pair { display: flex; gap: 12px; margin-top: 16px; }
+.msheet .pair .btn { flex: 1 1 0; padding: 0 10px; }
+.msheet .quote { background: #f3f5f5; }
+.msheet .dispute input { border-color: var(--m-ink); }
+.mghost { margin-top: 22px; border: 1.5px dashed #d6dcdd; border-radius: 16px; padding: 14px 16px 10px; text-align: center; color: #9aa9ac; }
+.mghost .gtag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--m-mute); background: #eef1f1; border-radius: 6px; padding: 1px 8px; }
+.mghost .gwho { margin-top: 8px; font-size: 16px; font-weight: 600; color: #8a9a9d; }
+.mghost .mrows { margin-top: 8px; text-align: left; }
+.mghost .mrows dt, .mghost .mrows dd, .mghost .mtotal { color: #a4b1b3; }
+.mghost .mrows div { padding: 4px 0; }
+.mghost .mtotal { font-size: 17px; }
+
+/* ---- chain list: Inkwell ---- */
+.evpanel { background: #fff; color: var(--ink); border-radius: 36px; padding: 22px 0 8px; box-shadow: 0 1px 2px rgba(21, 28, 24, .06), 0 18px 40px -24px rgba(21, 28, 24, .28); }
+.evhead { padding: 0 22px 14px; border-bottom: 1px solid #e4ecea; }
+.evplain { text-wrap: balance; font-size: 20px; font-weight: 800; letter-spacing: -.02em; line-height: 1.3; color: var(--ink); margin-bottom: 6px; }
+.evhead .meta { color: #62716b; font-size: 14px; }
+.evhead .meta b { color: var(--ink); }
+.evhead a, .icon-btn { color: var(--ink); }
+.icon-btn:hover { background: #eef3f1; }
+.evrow, .evrow:first-child { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 0 12px; align-items: start; min-height: 0; padding: 14px 22px 13px; border-top: 0; border-bottom: 1px solid #e4ecea; font-size: 15px; }
+.evrow .ti { grid-column: 1; grid-row: 1; }
+.evrow .eb { grid-column: 2; grid-row: 1; min-width: 0; }
+.evrow .x { grid-column: 3; grid-row: 1; }
+.evrow .ti { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px; }
+.evrow .ti .i { width: 17px; height: 17px; }
+.evrow .ti .spin { width: 15px; height: 15px; border-width: 2px; }
+.evrow.k-send .ti { background: #dbe8fb; color: #3b7bf0; }
+.evrow.k-pay .ti { background: #daf4ea; color: #2f8f4b; }
+.evrow.k-no .ti { background: #fbe0e4; color: #d23c52; }
+.evrow.k-late .ti { background: #eceeed; color: #62716b; }
+.evrow .et { font-size: 16px; line-height: 1.4; color: var(--ink); }
+.evrow .et b { font-weight: 700; }
+.evrow .tm { color: #62716b; font-size: 13.5px; margin-left: 4px; white-space: nowrap; }
+.evrow .es { margin-top: 3px; font-size: 14.5px; line-height: 1.4; color: #62716b; }
+.evrow .eh { margin-top: 2px; font-size: 13px; color: #8a9893; }
+.evrow .mine { display: inline-block; font-size: 12px; font-weight: 700; color: var(--teal-deep); background: var(--teal-pale); border-radius: 6px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+.evrow .x a { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 10px; border-radius: 10px; background: #eef3f1; color: var(--ink); font-family: var(--mono); font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.evrow .x a:hover { background: #e1eae6; }
+.evrow.rej .x a { font-family: var(--font); }
+.evrow.rej .et { color: #a72027; }
+.evnote { color: #62716b; padding: 14px 22px; border-top: 0; }
+@keyframes fresh { 0%, 40% { background: #e3f3ef; } 100% { background: rgba(227, 243, 239, 0); } }
+
+/* footer */
+.foot { color: var(--body); border-top-color: var(--stage-line); }
+.foot a, .foot details { color: var(--ink); }
+.foot ul { color: var(--body); }
+
+@media (max-width: 1023px) {
+  .phone { --px: 16px; --pb: 16px; }
+  .switch { background: var(--stage); }
+  .switch .who-now { color: var(--ink); }
+  .switch .roles { background: #cfdad4; }
+  .switch .roles button { color: var(--ink); }
+  .switch .roles button[aria-selected="true"] { background: #fff; }
+  .switch .rolebar { background: var(--worker); }
+  body[data-view="boss"] .switch .rolebar { background: var(--teal); }
+  .msheet { border-radius: 0 0 var(--r-phone) var(--r-phone); }
+  .mtear { margin-top: 34px; }
+  .evpanel { border-radius: var(--r-phone); }
+  .evrow, .evrow:first-child { padding: 12px 16px; }
+  .evhead { padding: 0 16px 12px; }
+  .evrow .x a { min-height: 44px; }
+}
+@media (max-width: 1359px) { .side-label.ev-label { color: var(--ink); letter-spacing: 0; } }
+@media (min-width: 1360px) and (max-width: 1599px) {
+  .evplain { font-size: 18px; }
+  .evrow, .evrow:first-child { grid-template-columns: 36px minmax(0, 1fr); }
+  .evrow .x { grid-column: 2; grid-row: 2; margin-top: 8px; }
+}
 </style>
 </head>
 <body data-view="worker">
@@ -366,7 +552,7 @@ code { font-size: .9em; word-break: break-all; }
   <section class="evidence" aria-labelledby="evTitle">
     <h2 class="side-label ev-label" id="evTitle"><span class="chip e" aria-hidden="true"></span>鏈上發生了什麼</h2>
     <div class="evpanel"><div class="evhead" id="evhead"></div>
-    <div id="evrows" role="table" aria-labelledby="evTitle"></div></div>
+    <div id="evrows" role="list" aria-labelledby="evTitle"></div></div>
   </section>
   <footer class="foot" id="foot"></footer>
 </main>
