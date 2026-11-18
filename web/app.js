@@ -387,7 +387,7 @@ function workerHtml() {
       <div class="field"><span class="lab">送給</span>
         <div class="to"><span class="thumb" aria-hidden="true">${I.store()}</span><b>${unv ? UNVERIFIED_NAME : esc(rep.employer)}</b>${to ? levelBadge(to) : `<span class="badge wait">查詢中</span>`}</div>
         <button class="link" type="button" data-act="emp">${unv ? "改回已驗證的公司" : "試試看：沒有 ME ID 的公司"}</button></div>
-      <div class="field"><span class="lab" id="winLab">回覆期限</span>
+      <div class="field"><span class="lab" id="winLab">回覆期限（示範用，已縮短）</span>
         <div class="seg" role="radiogroup" aria-labelledby="winLab">${[[30, "30 秒"], [60, "1 分鐘"], [3600, "1 小時"]].map(([v, t]) =>
           `<label><input type="radio" name="win" value="${v}"${S.win === v ? " checked" : ""}><span>${t}</span></label>`).join("")}</div></div>
       <button class="link" type="button" data-act="rep">${esc(reports[(S.rep + 1) % reports.length].swap)}</button>
@@ -410,8 +410,8 @@ function workerHtml() {
       <div class="alert" role="alert"><h3>${I.shieldNo()}被合約擋下，補薪單沒有送出</h3>
         <p>這家公司沒有通過 ME ID 真人驗證。</p>
         <p>合約規定只有真人驗證過的老闆才能收補薪單，避免有人假冒老闆自己按確認。</p>
-        ${j.rejectProofUrl ? ext(j.rejectProofUrl, "看鏈上被拒的那筆交易") : ""}</div>
-      ${j.contractMessage ? `<p class="note">合約原文：<code>${esc(j.contractMessage)}</code></p>` : ""}
+        ${j.rejectProofUrl ? ext(j.rejectProofUrl, "看先前一筆被合約拒絕的鏈上交易") : ""}</div>
+      ${j.contractMessage ? `<details class="note raw"><summary>合約回傳的原文</summary><code>${esc(j.contractMessage)}</code></details>` : ""}
       <div class="grow"></div>
       <button class="btn primary" type="button" data-act="fixEmp">改送給已驗證的公司</button>`;
   }
@@ -537,7 +537,7 @@ function guideState() {
     }
     case "due": return [1, `老闆沒在期限內回覆。${go("worker", "記為逾期")}`];
     case "marking": return [1, "寫上 ME Network 中…"];
-    case "done": return S.tried ? [2, "完成。打開左邊的「鏈上收據」可以核對每一步"] : [2, `完成。${go("worker", "試試看：沒有 ME ID 的公司", "，看合約怎麼擋假老闆")}`];
+    case "done": return S.tried ? [2, "完成。想看另一條路：按左邊的「<b>再送一張</b>」，這次在老闆手機按「我有異議」"] : [2, `完成。${go("worker", "試試看：沒有 ME ID 的公司", "，看合約怎麼擋假老闆")}`];
     default: return [0, ""];
   }
 }
@@ -571,7 +571,7 @@ function renderSwitch() {
 // ---------- evidence strip ----------
 function renderEvidence() {
   if (!info) return;
-  $("evhead").innerHTML = `<p class="evplain">這份合約公開在 ME Network 上，任何人都能核對</p><span class="meta">合約 <b title="${esc(info.contract)}">${short(info.contract, 9, 6)}</b>
+  $("evhead").innerHTML = `<p class="evplain">這份合約公開在 <span class="nw">ME Network 上，</span><span class="nw">任何人都能核對</span></p><span class="meta">合約 <b title="${esc(info.contract)}">${short(info.contract, 9, 6)}</b>
       <button class="icon-btn" type="button" data-act="copy" aria-label="複製合約地址">${S.copied ? "已複製" : I.copy()}</button>
       <a href="${esc(smartUrl({ config: {} }))}" target="_blank" rel="noopener">查證${I.ext()}</a></span>
     <span class="meta total">${S.evTotal != null ? `ME Network 測試網・已完成 <b>${num(S.evTotal)}</b> 筆交易` : "讀取中…"}</span>`;
@@ -583,12 +583,12 @@ function renderEvidence() {
     const id = r.hash || r.key, isFresh = S.fresh.has(id);
     if (isFresh) setTimeout(() => S.fresh.delete(id), 1300);
     const link = r.hash ? `<a href="${esc(txUrl(r.hash))}" target="_blank" rel="noopener">${short(r.hash)}${I.ext()}</a>`
-      : r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">被拒交易${I.ext()}</a>` : "";
+      : r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">先前的被拒交易${I.ext()}</a>` : "";
     const k = kindOf(r), act = String(r.what).replace(/^(老闆|勞工|合約)/, "");
     return `<div class="evrow k-${k}${r.pend ? " pend" : ""}${r.rej ? " rej" : ""}${isFresh ? " fresh" : ""}" role="listitem">
       <span class="ti" aria-hidden="true">${r.pend ? `<span class="spin"></span>` : KI[k]()}</span>
       <div class="eb"><p class="et"><b>${esc(r.who)}</b> ${esc(act)}${r.mine ? `<span class="mine">這個瀏覽器</span>` : ""}</p>
-        <p class="es">${esc(r.sub)}</p><p class="eh"><span class="mono">${hms(r.time)}</span>${r.height ? `・區塊 <span class="mono">${num(r.height)}</span>` : r.rej ? "・沒有上鏈" : ""}</p></div>
+        <p class="es">${esc(r.sub)}</p><p class="eh"><span class="mono">${hms(r.time)}</span>${r.height ? `・區塊 <span class="mono">${num(r.height)}</span>` : r.rej ? "・這次沒有上鏈" : ""}</p></div>
       <span class="x">${link}</span></div>`;
   }).join("");
   $("evrows").innerHTML = hd + (body || `<p class="evnote">${S.evErr ? "讀不到 ME Network 測試網，幾秒後自動重試。" : "讀取鏈上交易中…"}</p>`)

@@ -338,6 +338,14 @@ code { font-size: .9em; word-break: break-all; }
   .foot { margin-top: 24px; }
 }
 .side-label.ev-label { display: flex; }
+.nw { white-space: nowrap; }
+.raw summary { cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+.raw code { display: block; margin-top: 6px; font-size: 12px; }
+/* B1: the chain list scrolls inside its card; fade the cut edge so it reads as "more below" */
+@media (min-width: 1360px) {
+  .evpanel::after { content: ""; position: sticky; bottom: -8px; display: block; height: 44px; margin-top: -44px; background: linear-gradient(rgba(255, 255, 255, 0), #fff 85%); pointer-events: none; }
+}
+@media (max-width: 1023px) { .switch .rolebar { display: none; } }
 @media (max-width: 1359px) { .side-label.ev-label { margin: 0 0 6px; color: #fff; font-size: 15px; font-weight: 800; } }
 
 /* ================= v4: Kombai Gallery templates =================
@@ -519,6 +527,14 @@ body { background: var(--stage); color: var(--stage-ink); }
   .evhead { padding: 0 16px 12px; }
   .evrow .x a { min-height: 44px; }
 }
+.nw { white-space: nowrap; }
+.raw summary { cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+.raw code { display: block; margin-top: 6px; font-size: 12px; }
+/* B1: the chain list scrolls inside its card; fade the cut edge so it reads as "more below" */
+@media (min-width: 1360px) {
+  .evpanel::after { content: ""; position: sticky; bottom: -8px; display: block; height: 44px; margin-top: -44px; background: linear-gradient(rgba(255, 255, 255, 0), #fff 85%); pointer-events: none; }
+}
+@media (max-width: 1023px) { .switch .rolebar { display: none; } }
 @media (max-width: 1359px) { .side-label.ev-label { color: var(--ink); letter-spacing: 0; } }
 @media (min-width: 1360px) and (max-width: 1599px) {
   .evplain { font-size: 18px; }
