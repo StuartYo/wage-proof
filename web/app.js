@@ -133,13 +133,15 @@ async function loadReports() {
     reports.push({
       hash, url, month, rest,
       employer: r.employer.displayName.replace("（虛構）", ""), worker: r.worker.displayName.replace("（虛構）", ""),
-      wage: r.hourlyWageTWD, att: Number(f.attendance), pay: Number(f.payslip), diff: Number(f.differenceHours), short: f.estimatedShortfallTWD,
+      wage: r.hourlyWageTWD, att: Number(f.attendance), pay: Number(f.payslip), diff: Number(f.differenceHours), short: f.estimatedShortfallTWD, basis: f.basis || "",
       why: rest ? `休息日出勤 ${f.differenceHours} 小時沒有算` : `加班少算 ${f.differenceHours} 小時`,
       bossWhy: rest ? `${month} 月休息日出勤少算 ${f.differenceHours} 小時` : `${month} 月加班少算 ${f.differenceHours} 小時`,
       swap: rest ? `換一份範例（休息日出勤 ${ntd(f.estimatedShortfallTWD)}）` : `換回範例（加班 ${ntd(f.estimatedShortfallTWD)}）`,
     });
   }
 }
+const basisTxt = (b) => String(b || "").split(/[,;]/)[0].replace(/ hours?/g, " 小時").replace(/ x /g, " × ").trim();
+const initial = (name) => String(name || "?").trim().slice(-1);
 const repOfRec = (rec) => reports.find((r) => r.hash === rec?.report_hash) || null;
 
 // my record: status straight from the contract (effective_status turns pending into expired after the deadline)
@@ -468,29 +470,33 @@ function bossHtml() {
   const head = `<div class="btop"><span class="name">${I.store()}<span>${esc(r?.employer || "")}</span></span>${bossAddr ? levelBadge(bossAddr, `你的 ME ID：${LV[levels[bossAddr]] || ""}`) : ""}</div>`;
   if (!open) {
     return `${head}<div class="empty">${I.inbox()}<p>目前沒有待處理的補薪單</p><p>${isNarrow() ? "勞工送出後" : "左邊的勞工送出後"}，補薪單會出現在這裡</p>
-      ${r ? `<div class="ghost" aria-hidden="true"><span class="gtag">預覽</span><p class="geb">${esc(r.worker)} 送來一張補薪單</p><p class="gamt"><small>NT$</small>${r.short.toLocaleString("en-US")}</p>
-        <dl><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div><div><dt>時薪</dt><dd>${ntd(r.wage)}</dd></div></dl>
+      ${r ? `<div class="ghost" aria-hidden="true"><span class="gtag">預覽</span><p class="geb">${esc(r.worker)} 請你補發</p><p class="gamt"><small>NT$</small>${r.short.toLocaleString("en-US")}</p>
+        <dl><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div>${r.basis ? `<div><dt>算法</dt><dd>${esc(basisTxt(r.basis))}</dd></div>` : ""}</dl>
         <p class="gwill">老闆可以補發，或提出異議</p></div>` : ""}</div>`;
   }
   const twd = rec.claim && rec.claim !== "0" ? twdOf(rec.claim) : r.short;
   const intro = `<p class="eyebrow">${I.user()}${esc(r.worker)} 送來一張補薪單・${hm(rec.submitted_at)}</p>${amtHtml(twd)}<p class="why">${esc(r.bossWhy)}</p>`;
   const lines = `<dl class="lines"><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div><div><dt>時薪</dt><dd>${ntd(r.wage)}</dd></div></dl>`;
+  const bill = `<dl class="lines bill-lines"><div><dt>出勤</dt><dd>${r.att} 小時</dd></div><div><dt>薪資單</dt><dd>${r.pay} 小時</dd></div><div><dt>時薪</dt><dd>${ntd(r.wage)}</dd></div>${r.basis ? `<div><dt>算法</dt><dd>${esc(basisTxt(r.basis))}</dd></div>` : ""}<div class="tot"><dt>應補發</dt><dd>${ntd(twd)}</dd></div></dl>`;
 
   if (S.phase === "waiting") {
     const b = S.boss, busy = !!b.busy;
-    return `${head}${intro}
-      <p class="due">${I.clock()}<span class="mono" data-left="${rec.deadline}"></span> 內回覆，過了會記為逾期</p>
-      ${lines}<div class="grow"></div>
+    const who = `<div class="bill-head"><span class="av" aria-hidden="true">${esc(initial(r.worker))}</span>
+        <p class="bill-from">${esc(r.worker)} 請你補發</p><p class="bill-why">${esc(r.bossWhy)}・${hm(rec.submitted_at)} 送出</p>
+        ${amtHtml(twd, "amt c")}<p class="due">${I.clock()}<span class="mono" data-left="${rec.deadline}"></span> 內回覆，過了會記為逾期</p></div>`;
+    if (b.open) return `${head}${who}<div class="grow"></div>
+      <div class="dispute"><label for="reason">不同意的理由</label>
+        <input id="reason" maxlength="200" autocomplete="off" placeholder="例如：那 2 小時是自願留下" value="${esc(b.reason)}"${b.reasonErr ? ' aria-invalid="true" aria-describedby="reasonErr"' : ""}${busy ? " disabled" : ""}>
+        ${b.reasonErr ? `<p class="err" id="reasonErr" role="alert" style="margin:0">寫一句理由</p>` : ""}
+        <p class="fine">不付款。鏈上只存理由的指紋，不公開內容。</p>
+        ${b.err ? `<p class="err" role="alert">${esc(b.err)}</p>` : ""}
+        <div class="pair"><button class="btn second" type="button" data-act="closeDispute"${busy ? " disabled" : ""}>取消</button>
+        <button class="btn ink" type="button" data-act="dispute"${busy ? " disabled" : ""}>${b.busy === "dispute" ? `<span class="spin"></span>送出中 <span class="mono" data-since="${b.at}"></span> 秒` : "送出異議"}</button></div></div>`;
+    return `${head}${who}${bill}<div class="grow"></div>
       ${b.err ? `<p class="err" role="alert">${esc(b.err)}</p>` : ""}
-      <button class="btn primary" type="button" data-act="confirm"${busy ? " disabled" : ""}>${b.busy === "confirm" ? `<span class="spin"></span>補發中，等出塊 <span class="mono" data-since="${b.at}"></span> 秒` : `補發 ${ntd(twd)}`}</button>
-      ${rec.claim && rec.claim !== "0" ? `<p class="fine c">同一筆交易用 ${mec(rec.claim)} MEC 轉給員工（示範換算）</p>` : ""}
-      ${b.open ? `<div class="dispute"><label for="reason">不同意的理由</label>
-          <input id="reason" maxlength="200" autocomplete="off" placeholder="例如：那 2 小時是自願留下" value="${esc(b.reason)}"${b.reasonErr ? ' aria-invalid="true" aria-describedby="reasonErr"' : ""}${busy ? " disabled" : ""}>
-          ${b.reasonErr ? `<p class="err" id="reasonErr" role="alert" style="margin:0">寫一句理由</p>` : ""}
-          <div class="row"><button class="btn outline" type="button" data-act="dispute"${busy ? " disabled" : ""}>${b.busy === "dispute" ? `<span class="spin"></span>送出中 <span class="mono" data-since="${b.at}"></span> 秒` : "送出異議"}</button>
-          <button class="link" type="button" data-act="closeDispute"${busy ? " disabled" : ""}>取消</button></div>
-          <p class="fine">鏈上只存理由的指紋，不公開內容。</p></div>`
-        : `<button class="link c" type="button" data-act="openDispute"${busy ? " disabled" : ""}>我有異議</button>`}`;
+      <div class="pair"><button class="btn second" type="button" data-act="openDispute"${busy ? " disabled" : ""}>我有異議</button>
+      <button class="btn primary" type="button" data-act="confirm"${busy ? " disabled" : ""}>${b.busy === "confirm" ? `<span class="spin"></span>補發中 <span class="mono" data-since="${b.at}"></span> 秒` : `補發 ${ntd(twd)}`}</button></div>
+      ${rec.claim && rec.claim !== "0" ? `<p class="fine c">同一筆交易用 ${mec(rec.claim)} MEC 轉給員工（示範換算）</p>` : ""}`;
   }
   if (S.phase === "due" || S.phase === "marking") {
     return `${head}${intro}<p class="state" style="color:var(--body)">${I.clock()}已過回覆期限</p>
@@ -498,12 +504,12 @@ function bossHtml() {
   }
   // done
   const st = rec.status, t = S.txs[st === "confirmed" ? "confirm" : st === "disputed" ? "dispute" : "mark_expired"];
-  const kv = t ? `<dl class="kv" style="margin-top:16px"><dt>時間</dt><dd class="mono">${hms(t.time)}</dd><dt>區塊</dt><dd class="mono">${num(t.height)}</dd><dt>交易</dt><dd>${ext(txUrl(t.hash), `<span class="mono">${short(t.hash)}</span>`)}</dd></dl>` : "";
-  if (st === "confirmed") return `${head}<div class="grow"></div><div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
-    ${rec.settled && rec.settled !== "0" ? `<p class="why">合約把 ${mec(rec.settled)} MEC 轉給員工（示範換算）</p>` : ""}${kv}<div class="grow"></div>`;
-  if (st === "disputed") { const reason = reasonOf(rec.id); return `${head}<div class="grow"></div><div class="big disputed">${I.flag()}</div><h3 class="res">已送出異議</h3>
-    ${reason ? `<p class="quote">「${esc(reason)}」</p>` : ""}<p class="why" style="margin-top:10px">沒有付款。理由的指紋已上鏈。</p>${kv}<div class="grow"></div>`; }
-  return `${head}<div class="grow"></div><div class="big expired">${I.clock()}</div><h3 class="res">這張已逾期</h3><p class="why" style="margin-top:8px">你沒有在期限內回覆，鏈上已記錄。</p>${kv}<div class="grow"></div>`;
+  const kv = t ? `<dl class="lines bill-lines"><div><dt>時間</dt><dd>${hms(t.time)}</dd></div><div><dt>區塊</dt><dd>${num(t.height)}</dd></div><div><dt>交易</dt><dd>${ext(txUrl(t.hash), `<span class="mono">${short(t.hash)}</span>`)}</dd></div></dl>` : "";
+  if (st === "confirmed") return `${head}<div class="grow"></div><div class="bill-head"><div class="big paid">${I.check()}</div><h3 class="res">已補發 ${ntd(twd)}</h3>
+    ${rec.settled && rec.settled !== "0" ? `<p class="why">合約把 ${mec(rec.settled)} MEC 轉給員工（示範換算）</p>` : ""}</div>${kv}<div class="grow"></div>`;
+  if (st === "disputed") { const reason = reasonOf(rec.id); return `${head}<div class="grow"></div><div class="bill-head"><div class="big disputed">${I.flag()}</div><h3 class="res">已送出異議</h3>
+    ${reason ? `<p class="quote">「${esc(reason)}」</p>` : ""}<p class="why" style="margin-top:10px">沒有付款。理由的指紋已上鏈。</p></div>${kv}<div class="grow"></div>`; }
+  return `${head}<div class="grow"></div><div class="bill-head"><div class="big expired">${I.clock()}</div><h3 class="res">這張已逾期</h3><p class="why" style="margin-top:8px">你沒有在期限內回覆，鏈上已記錄。</p></div>${kv}<div class="grow"></div>`;
 }
 
 // ---------- guide + dock ----------
